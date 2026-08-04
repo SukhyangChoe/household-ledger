@@ -1,30 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import { getSupabaseConfig } from "@/lib/supabase/config";
 import type { Database } from "@/types/database.types";
-
-function getSupabaseConfig() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url) {
-    throw new Error(
-      "NEXT_PUBLIC_SUPABASE_URL 환경변수가 설정되지 않았습니다.",
-    );
-  }
-
-  if (!publishableKey) {
-    throw new Error(
-      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY 환경변수가 설정되지 않았습니다.",
-    );
-  }
-
-  return {
-    url,
-    publishableKey,
-  };
-}
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -43,7 +21,7 @@ export async function createClient() {
           });
         } catch {
           // Server Component에서는 쿠키 쓰기가 제한될 수 있다.
-          // 인증 세션 갱신용 proxy는 로그인 기능 구현 단계에서 추가한다.
+          // 세션 갱신은 Proxy에서도 처리한다.
         }
       },
     },
