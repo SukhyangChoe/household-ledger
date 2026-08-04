@@ -674,6 +674,7 @@ export type Database = {
         Args: { p_account_id: string }
         Returns: undefined
       }
+      delete_unused_card: { Args: { p_card_id: string }; Returns: undefined }
       set_living_account: { Args: { p_account_id: string }; Returns: undefined }
     }
     Enums: {

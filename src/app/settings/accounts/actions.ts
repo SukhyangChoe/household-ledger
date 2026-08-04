@@ -112,11 +112,17 @@ export async function createAccount(
         livingAccountError,
       );
 
-      await supabase
-        .from("accounts")
-        .delete()
-        .eq("id", account.id)
-        .eq("household_id", householdId);
+      const { error: cleanupError } =
+        await supabase.rpc("delete_unused_account", {
+          p_account_id: account.id,
+        });
+
+      if (cleanupError) {
+        console.error(
+          "Failed to clean up account:",
+          cleanupError,
+        );
+      }
 
       return {
         status: "error",
@@ -156,6 +162,13 @@ export async function updateAccount(
     return {
       status: "error",
       message: "계좌명을 입력해주세요.",
+    };
+  }
+
+  if (name.length > 50) {
+    return {
+      status: "error",
+      message: "계좌명은 50자 이내로 입력해주세요.",
     };
   }
 
@@ -294,13 +307,15 @@ export async function toggleAccountActive(
     };
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("accounts")
     .update({
       is_active: nextActive,
     })
     .eq("id", accountId)
-    .eq("household_id", householdId);
+    .eq("household_id", householdId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -311,6 +326,13 @@ export async function toggleAccountActive(
     return {
       status: "error",
       message: "계좌 상태를 변경하지 못했습니다.",
+    };
+  }
+
+  if (!data) {
+    return {
+      status: "error",
+      message: "계좌를 찾지 못했습니다.",
     };
   }
 
@@ -325,63 +347,70 @@ export async function toggleAccountActive(
 }
 
 export async function deleteAccount(
-    _previousState: AccountActionState,
-    formData: FormData,
-  ): Promise<AccountActionState> {
-    const accountId = getText(formData, "accountId");
-  
-    if (!accountId) {
-      return {
-        status: "error",
-        message: "삭제할 계좌를 확인하지 못했습니다.",
-      };
-    }
-  
-    const { supabase } = await requireCurrentHousehold();
-  
-    const { error } = await supabase.rpc(
-      "delete_unused_account",
-      {
-        p_account_id: accountId,
-      },
-    );
-  
-    if (error) {
-      console.error("Failed to delete account:", error);
-  
-      if (error.message.includes("ACCOUNT_IS_LIVING")) {
-        return {
-          status: "error",
-          message:
-            "대표 생활비 계좌는 삭제할 수 없습니다. 다른 계좌를 먼저 대표로 지정해주세요.",
-        };
-      }
-  
-      if (error.message.includes("ACCOUNT_IN_USE")) {
-        return {
-          status: "error",
-          message:
-            "카드·카테고리·거래·정기항목 등에 사용된 계좌는 삭제할 수 없습니다. 비활성화해주세요.",
-        };
-      }
-  
-      if (error.message.includes("ACCOUNT_NOT_FOUND")) {
-        return {
-          status: "error",
-          message: "삭제할 계좌를 찾지 못했습니다.",
-        };
-      }
-  
-      return {
-        status: "error",
-        message: "계좌를 삭제하지 못했습니다.",
-      };
-    }
-  
-    revalidatePath("/settings");
-  
+  _previousState: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  const accountId = getText(formData, "accountId");
+
+  if (!accountId) {
     return {
-      status: "success",
-      message: "계좌를 삭제했습니다.",
+      status: "error",
+      message: "삭제할 계좌를 확인하지 못했습니다.",
     };
   }
+
+  const { supabase } = await requireCurrentHousehold();
+
+  const { error } = await supabase.rpc(
+    "delete_unused_account",
+    {
+      p_account_id: accountId,
+    },
+  );
+
+  if (error) {
+    console.error("Failed to delete account:", error);
+
+    if (error.message.includes("ACCOUNT_IS_LIVING")) {
+      return {
+        status: "error",
+        message:
+          "대표 생활비 계좌는 삭제할 수 없습니다. 다른 계좌를 먼저 대표로 지정해주세요.",
+      };
+    }
+
+    if (error.message.includes("ACCOUNT_IN_USE")) {
+      return {
+        status: "error",
+        message:
+          "카드·카테고리·거래·정기항목 등에 사용된 계좌는 삭제할 수 없습니다. 비활성화해주세요.",
+      };
+    }
+
+    if (error.message.includes("ACCOUNT_NOT_FOUND")) {
+      return {
+        status: "error",
+        message: "삭제할 계좌를 찾지 못했습니다.",
+      };
+    }
+
+    if (error.message.includes("ACCOUNT_ACCESS_DENIED")) {
+      return {
+        status: "error",
+        message: "이 계좌를 삭제할 권한이 없습니다.",
+      };
+    }
+
+    return {
+      status: "error",
+      message: "계좌를 삭제하지 못했습니다.",
+    };
+  }
+
+  revalidatePath("/settings");
+
+  return {
+    status: "success",
+    message: "계좌를 삭제했습니다.",
+  };
+}
