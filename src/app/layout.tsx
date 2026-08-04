@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { LogoutButton } from "@/components/logout-button";
 
 export const metadata: Metadata = {
   title: "우리집 가계부",
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </div>
               <button className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white">+ 거래 추가</button>
             </header>
-            <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main>
+            <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8"><LogoutButton />{children}</main>
           </div>
         </div>
         <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-[var(--border)] bg-white lg:hidden">
