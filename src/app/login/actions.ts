@@ -36,5 +36,5 @@ export async function login(
     };
   }
 
-  redirect("/");
+  redirect("/onboarding");
 }
