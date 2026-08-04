@@ -670,6 +670,11 @@ export type Database = {
         Args: { p_display_name: string; p_household_name: string }
         Returns: string
       }
+      delete_unused_account: {
+        Args: { p_account_id: string }
+        Returns: undefined
+      }
+      set_living_account: { Args: { p_account_id: string }; Returns: undefined }
     }
     Enums: {
       expense_nature: "fixed" | "variable" | "irregular"
