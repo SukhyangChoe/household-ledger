@@ -690,6 +690,10 @@ export type Database = {
         }
         Returns: string
       }
+      delete_planned_manual_transaction: {
+        Args: { p_transaction_id: string }
+        Returns: undefined
+      }
       delete_unused_account: {
         Args: { p_account_id: string }
         Returns: undefined
@@ -700,12 +704,19 @@ export type Database = {
         Returns: undefined
       }
       set_living_account: { Args: { p_account_id: string }; Returns: undefined }
+      set_transaction_status: {
+        Args: {
+          p_status: Database["public"]["Enums"]["transaction_status"]
+          p_transaction_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       expense_nature: "fixed" | "variable" | "irregular"
       fund_purpose: "living" | "investment"
       owner_type: "wife" | "husband" | "joint"
-      transaction_status: "planned" | "confirmed" | "cancelled" | "refunded"
+      transaction_status: "planned" | "confirmed" | "cancelled"
       transaction_type: "income" | "expense" | "transfer"
     }
     CompositeTypes: {
@@ -837,7 +848,7 @@ export const Constants = {
       expense_nature: ["fixed", "variable", "irregular"],
       fund_purpose: ["living", "investment"],
       owner_type: ["wife", "husband", "joint"],
-      transaction_status: ["planned", "confirmed", "cancelled", "refunded"],
+      transaction_status: ["planned", "confirmed", "cancelled"],
       transaction_type: ["income", "expense", "transfer"],
     },
   },

@@ -2,7 +2,7 @@ export type TransactionForSettlement = {
   transactionType: "income" | "expense" | "transfer";
   amount: number;
   accountId: string | null;
-  status: "planned" | "confirmed" | "cancelled" | "refunded";
+  status: "planned" | "confirmed" | "cancelled";
   livingAllocatedAmount?: number | null;
   fundPurpose?: "living" | "investment" | null;
   settlementCompletedAt?: string | null;
