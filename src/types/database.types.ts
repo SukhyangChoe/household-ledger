@@ -670,11 +670,35 @@ export type Database = {
         Args: { p_display_name: string; p_household_name: string }
         Returns: string
       }
+      create_rate_rule: {
+        Args: {
+          p_household_id: string
+          p_memo: string
+          p_name: string
+          p_rate_bps: number
+          p_valid_from: string
+        }
+        Returns: string
+      }
+      create_rate_rule_version: {
+        Args: {
+          p_memo: string
+          p_name: string
+          p_rate_bps: number
+          p_rate_rule_id: string
+          p_valid_from: string
+        }
+        Returns: string
+      }
       delete_unused_account: {
         Args: { p_account_id: string }
         Returns: undefined
       }
       delete_unused_card: { Args: { p_card_id: string }; Returns: undefined }
+      delete_unused_category: {
+        Args: { p_category_id: string }
+        Returns: undefined
+      }
       set_living_account: { Args: { p_account_id: string }; Returns: undefined }
     }
     Enums: {
