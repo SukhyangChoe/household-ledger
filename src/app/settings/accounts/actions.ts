@@ -132,7 +132,7 @@ export async function createAccount(
     }
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -210,7 +210,7 @@ export async function updateAccount(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -253,7 +253,7 @@ export async function setLivingAccount(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -336,7 +336,7 @@ export async function toggleAccountActive(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -407,7 +407,7 @@ export async function deleteAccount(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",

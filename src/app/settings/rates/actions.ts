@@ -153,7 +153,7 @@ export async function createRateRule(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -239,7 +239,7 @@ export async function createRateRuleVersion(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",

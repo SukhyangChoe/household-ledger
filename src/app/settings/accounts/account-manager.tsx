@@ -29,7 +29,10 @@ const initialState: AccountActionState = {
   message: "",
 };
 
-const ownerLabels: Record<Account["owner_type"], string> = {
+const ownerLabels: Record<
+  Account["owner_type"],
+  string
+> = {
   wife: "아내",
   husband: "남편",
   joint: "공동",
@@ -61,81 +64,107 @@ function ActionMessage({
 }
 
 function CreateAccountForm() {
-  const formRef = useRef<HTMLFormElement>(null);
+  const detailsRef =
+    useRef<HTMLDetailsElement>(null);
+  const formRef =
+    useRef<HTMLFormElement>(null);
 
   const [state, formAction, isPending] =
-    useActionState(createAccount, initialState);
+    useActionState(
+      createAccount,
+      initialState,
+    );
 
   useEffect(() => {
     if (state.status === "success") {
       formRef.current?.reset();
+      detailsRef.current?.removeAttribute(
+        "open",
+      );
     }
   }, [state]);
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      className="mt-4 rounded-2xl border border-[var(--border)] bg-gray-50 p-4"
-    >
-      <p className="font-semibold">새 계좌 등록</p>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-medium">
-          계좌명
-          <input
-            name="name"
-            type="text"
-            maxLength={50}
-            placeholder="예: 아내 생활비 계좌"
-            required
-            className={inputClassName}
-          />
-        </label>
-
-        <label className="text-sm font-medium">
-          소유자
-          <select
-            name="ownerType"
-            defaultValue="wife"
-            className={inputClassName}
-          >
-            <option value="wife">아내</option>
-            <option value="husband">남편</option>
-            <option value="joint">공동</option>
-          </select>
-        </label>
-      </div>
-
-      <label className="mt-4 block text-sm font-medium">
-        메모
-        <input
-          name="memo"
-          type="text"
-          placeholder="선택 입력"
-          className={inputClassName}
-        />
-      </label>
-
-      <label className="mt-4 flex items-center gap-2 text-sm">
-        <input
-          name="isLivingAccount"
-          type="checkbox"
-          className="h-4 w-4 accent-emerald-700"
-        />
-        대표 생활비 계좌로 등록
-      </label>
-
-      <button
-        type="submit"
-        disabled={isPending}
-        className="mt-4 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+    <>
+      <details
+        ref={detailsRef}
+        className="mt-4 rounded-2xl border border-[var(--border)] bg-gray-50"
       >
-        {isPending ? "등록 중..." : "계좌 등록"}
-      </button>
+        <summary className="cursor-pointer px-4 py-4 font-semibold">
+          새 계좌 등록
+        </summary>
+
+        <form
+          ref={formRef}
+          action={formAction}
+          className="border-t border-[var(--border)] p-4"
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium">
+              계좌명
+              <input
+                name="name"
+                type="text"
+                maxLength={50}
+                placeholder="예: 아내 생활비 계좌"
+                required
+                className={inputClassName}
+              />
+            </label>
+
+            <label className="text-sm font-medium">
+              소유자
+              <select
+                name="ownerType"
+                defaultValue="wife"
+                className={inputClassName}
+              >
+                <option value="wife">
+                  아내
+                </option>
+                <option value="husband">
+                  남편
+                </option>
+                <option value="joint">
+                  공동
+                </option>
+              </select>
+            </label>
+          </div>
+
+          <label className="mt-4 block text-sm font-medium">
+            메모
+            <input
+              name="memo"
+              type="text"
+              placeholder="선택 입력"
+              className={inputClassName}
+            />
+          </label>
+
+          <label className="mt-4 flex items-center gap-2 text-sm">
+            <input
+              name="isLivingAccount"
+              type="checkbox"
+              className="h-4 w-4 accent-emerald-700"
+            />
+            대표 생활비 계좌로 등록
+          </label>
+
+          <button
+            type="submit"
+            disabled={isPending}
+            className="mt-4 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending
+              ? "등록 중..."
+              : "계좌 등록"}
+          </button>
+        </form>
+      </details>
 
       <ActionMessage state={state} />
-    </form>
+    </>
   );
 }
 
@@ -144,11 +173,17 @@ function AccountRow({
 }: {
   account: Account;
 }) {
+  const editDetailsRef =
+    useRef<HTMLDetailsElement>(null);
+
   const [
     updateState,
     updateAction,
     updatePending,
-  ] = useActionState(updateAccount, initialState);
+  ] = useActionState(
+    updateAccount,
+    initialState,
+  );
 
   const [
     livingState,
@@ -177,6 +212,14 @@ function AccountRow({
     initialState,
   );
 
+  useEffect(() => {
+    if (updateState.status === "success") {
+      editDetailsRef.current?.removeAttribute(
+        "open",
+      );
+    }
+  }, [updateState]);
+
   return (
     <div className="py-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -201,12 +244,18 @@ function AccountRow({
             )}
 
             {!account.is_active ? (
-              <Badge tone="warn">비활성</Badge>
+              <Badge tone="warn">
+                비활성
+              </Badge>
             ) : null}
           </div>
 
           <p className="mt-1 text-xs text-gray-500">
-            {ownerLabels[account.owner_type]}
+            {
+              ownerLabels[
+                account.owner_type
+              ]
+            }
             {account.memo
               ? ` · ${account.memo}`
               : ""}
@@ -244,7 +293,9 @@ function AccountRow({
             <input
               type="hidden"
               name="nextActive"
-              value={String(!account.is_active)}
+              value={String(
+                !account.is_active,
+              )}
             />
 
             <button
@@ -262,32 +313,35 @@ function AccountRow({
 
           {!account.is_living_account ? (
             <form
-                action={deleteAction}
-                onSubmit={(event) => {
-                const confirmed = window.confirm(
+              action={deleteAction}
+              onSubmit={(event) => {
+                const confirmed =
+                  window.confirm(
                     `"${account.name}" 계좌를 완전히 삭제할까요?\n\n이미 거래 등에 사용된 계좌라면 삭제되지 않습니다.`,
-                );
+                  );
 
                 if (!confirmed) {
-                    event.preventDefault();
+                  event.preventDefault();
                 }
-                }}
+              }}
             >
-                <input
+              <input
                 type="hidden"
                 name="accountId"
                 value={account.id}
-                />
+              />
 
-                <button
+              <button
                 type="submit"
                 disabled={deletePending}
                 className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                {deletePending ? "삭제 중..." : "삭제"}
-                </button>
+              >
+                {deletePending
+                  ? "삭제 중..."
+                  : "삭제"}
+              </button>
             </form>
-            ) : null}
+          ) : null}
         </div>
       </div>
 
@@ -295,7 +349,10 @@ function AccountRow({
       <ActionMessage state={activeState} />
       <ActionMessage state={deleteState} />
 
-      <details className="mt-4">
+      <details
+        ref={editDetailsRef}
+        className="mt-4"
+      >
         <summary className="cursor-pointer text-sm font-semibold text-gray-600">
           계좌 정보 수정
         </summary>
@@ -327,12 +384,20 @@ function AccountRow({
               소유자
               <select
                 name="ownerType"
-                defaultValue={account.owner_type}
+                defaultValue={
+                  account.owner_type
+                }
                 className={inputClassName}
               >
-                <option value="wife">아내</option>
-                <option value="husband">남편</option>
-                <option value="joint">공동</option>
+                <option value="wife">
+                  아내
+                </option>
+                <option value="husband">
+                  남편
+                </option>
+                <option value="joint">
+                  공동
+                </option>
               </select>
             </label>
           </div>
@@ -342,7 +407,9 @@ function AccountRow({
             <input
               name="memo"
               type="text"
-              defaultValue={account.memo ?? ""}
+              defaultValue={
+                account.memo ?? ""
+              }
               className={inputClassName}
             />
           </label>
@@ -356,10 +423,10 @@ function AccountRow({
               ? "저장 중..."
               : "수정 저장"}
           </button>
-
-          <ActionMessage state={updateState} />
         </form>
       </details>
+
+      <ActionMessage state={updateState} />
     </div>
   );
 }

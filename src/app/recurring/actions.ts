@@ -851,11 +851,40 @@ export async function toggleRecurringRuleActive(
     );
   }
 
+  if (nextActive) {
+    const currentMonth =
+      getCurrentMonthInKorea();
+
+    const {
+      error: generationError,
+    } = await supabase.rpc(
+      "generate_recurring_transactions",
+      {
+        p_household_id: householdId,
+        p_target_month:
+          `${currentMonth}-01`,
+      },
+    );
+
+    if (generationError) {
+      console.error(
+        "Failed to generate recurring transaction after reactivation:",
+        generationError,
+      );
+
+      revalidateRecurringPaths();
+
+      return successState(
+        "정기 항목은 다시 활성화했습니다. 다만 이번 달 예정 거래 자동 생성은 완료하지 못했습니다.",
+      );
+    }
+  }
+
   revalidateRecurringPaths();
 
   return successState(
     nextActive
-      ? "정기 항목을 다시 활성화했습니다."
+      ? "정기 항목을 다시 활성화하고 필요한 이번 달 예정 거래를 생성했습니다."
       : "정기 항목을 비활성화했습니다.",
   );
 }

@@ -206,7 +206,8 @@ function FormFields({
     cards.filter(
       (card) =>
         card.is_active ||
-        card.id === initialRule?.card_id,
+        card.id ===
+          initialRule?.card_id,
     );
 
   const visibleRateRules =
@@ -236,9 +237,13 @@ function FormFields({
                 return;
               }
 
-              setTransactionType(value);
+              setTransactionType(
+                value,
+              );
 
-              if (value === "income") {
+              if (
+                value === "income"
+              ) {
                 setPaymentMethod(
                   "account",
                 );
@@ -401,7 +406,9 @@ function FormFields({
                     "expense"
                 )
               ) {
-                setPaymentMethod(value);
+                setPaymentMethod(
+                  value,
+                );
               }
             }}
             className={inputClassName}
@@ -636,8 +643,15 @@ function CreateRuleForm({
   rateRules,
   currentMonth,
 }: Omit<Props, "rules">) {
+  const detailsRef =
+    useRef<HTMLDetailsElement>(null);
   const formRef =
     useRef<HTMLFormElement>(null);
+
+  const [
+    resetVersion,
+    setResetVersion,
+  ] = useState(0);
 
   const [
     state,
@@ -653,41 +667,57 @@ function CreateRuleForm({
       state.status === "success"
     ) {
       formRef.current?.reset();
+      detailsRef.current?.removeAttribute(
+        "open",
+      );
     }
   }, [state]);
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      className="mt-4 rounded-2xl border border-[var(--border)] bg-gray-50 p-4"
-    >
-      <p className="font-semibold">
-        새 정기 항목 등록
-      </p>
-
-      <div className="mt-4">
-        <FormFields
-          accounts={accounts}
-          cards={cards}
-          categories={categories}
-          rateRules={rateRules}
-          currentMonth={currentMonth}
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={isPending}
-        className="mt-4 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+    <>
+      <details
+        ref={detailsRef}
+        className="mt-4 rounded-2xl border border-[var(--border)] bg-gray-50"
       >
-        {isPending
-          ? "등록 중..."
-          : "정기 항목 등록"}
-      </button>
+        <summary className="cursor-pointer px-4 py-4 font-semibold">
+          새 정기 항목 등록
+        </summary>
 
-      <ActionMessage state={state} />
-    </form>
+        <form
+          ref={formRef}
+          action={formAction}
+          onReset={() => {
+            setResetVersion(
+              (value) => value + 1,
+            );
+          }}
+          className="border-t border-[var(--border)] p-4"
+        >
+          <FormFields
+            key={resetVersion}
+            accounts={accounts}
+            cards={cards}
+            categories={categories}
+            rateRules={rateRules}
+            currentMonth={currentMonth}
+          />
+
+          <button
+            type="submit"
+            disabled={isPending}
+            className="mt-4 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending
+              ? "등록 중..."
+              : "정기 항목 등록"}
+          </button>
+        </form>
+      </details>
+
+      <ActionMessage
+        state={state}
+      />
+    </>
   );
 }
 
@@ -706,6 +736,9 @@ function RuleRow({
   rateRules: RateRule[];
   currentMonth: string;
 }) {
+  const editDetailsRef =
+    useRef<HTMLDetailsElement>(null);
+
   const [
     updateState,
     updateAction,
@@ -733,6 +766,16 @@ function RuleRow({
     initialState,
   );
 
+  useEffect(() => {
+    if (
+      updateState.status === "success"
+    ) {
+      editDetailsRef.current?.removeAttribute(
+        "open",
+      );
+    }
+  }, [updateState]);
+
   const account = accounts.find(
     (item) =>
       item.id === rule.account_id,
@@ -741,16 +784,20 @@ function RuleRow({
     (item) =>
       item.id === rule.card_id,
   );
-  const category = categories.find(
-    (item) =>
-      item.id === rule.category_id,
-  );
+  const category =
+    categories.find(
+      (item) =>
+        item.id === rule.category_id,
+    );
 
   const progress =
     rule.show_occurrence_progress
       ? occurrenceProgress(
           currentMonth,
-          rule.start_month.slice(0, 7),
+          rule.start_month.slice(
+            0,
+            7,
+          ),
           rule.end_month?.slice(
             0,
             7,
@@ -856,7 +903,9 @@ function RuleRow({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <form action={activeAction}>
+          <form
+            action={activeAction}
+          >
             <input
               type="hidden"
               name="recurringRuleId"
@@ -922,7 +971,10 @@ function RuleRow({
         state={deleteState}
       />
 
-      <details className="mt-4">
+      <details
+        ref={editDetailsRef}
+        className="mt-4"
+      >
         <summary className="cursor-pointer text-sm font-semibold text-gray-600">
           정기 항목 수정
         </summary>
@@ -938,6 +990,7 @@ function RuleRow({
           />
 
           <FormFields
+            key={rule.updated_at}
             accounts={accounts}
             cards={cards}
             categories={categories}
@@ -955,12 +1008,12 @@ function RuleRow({
               ? "저장 중..."
               : "수정 저장"}
           </button>
-
-          <ActionMessage
-            state={updateState}
-          />
         </form>
       </details>
+
+      <ActionMessage
+        state={updateState}
+      />
     </div>
   );
 }

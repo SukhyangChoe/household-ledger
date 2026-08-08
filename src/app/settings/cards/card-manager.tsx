@@ -32,7 +32,10 @@ const initialState: CardActionState = {
   message: "",
 };
 
-const ownerLabels: Record<CardRow["owner_type"], string> = {
+const ownerLabels: Record<
+  CardRow["owner_type"],
+  string
+> = {
   wife: "아내",
   husband: "남편",
   joint: "공동",
@@ -68,117 +71,154 @@ function CreateCardForm({
 }: {
   accounts: Account[];
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
+  const detailsRef =
+    useRef<HTMLDetailsElement>(null);
+  const formRef =
+    useRef<HTMLFormElement>(null);
+
   const activeAccounts = accounts.filter(
     (account) => account.is_active,
   );
 
   const [state, formAction, isPending] =
-    useActionState(createCard, initialState);
+    useActionState(
+      createCard,
+      initialState,
+    );
 
   useEffect(() => {
     if (state.status === "success") {
       formRef.current?.reset();
+      detailsRef.current?.removeAttribute(
+        "open",
+      );
     }
   }, [state]);
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      className="mt-4 rounded-2xl border border-[var(--border)] bg-gray-50 p-4"
-    >
-      <p className="font-semibold">새 카드 등록</p>
-
-      {activeAccounts.length === 0 ? (
-        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
-          먼저 활성 계좌를 등록해주세요.
-        </p>
-      ) : null}
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-medium">
-          카드명
-          <input
-            name="name"
-            type="text"
-            maxLength={50}
-            placeholder="예: 남편 신용카드"
-            required
-            className={inputClassName}
-          />
-        </label>
-
-        <label className="text-sm font-medium">
-          소유자
-          <select
-            name="ownerType"
-            defaultValue="wife"
-            className={inputClassName}
-          >
-            <option value="wife">아내</option>
-            <option value="husband">남편</option>
-            <option value="joint">공동</option>
-          </select>
-        </label>
-
-        <label className="text-sm font-medium">
-          카드대금 출금 계좌
-          <select
-            name="paymentAccountId"
-            required
-            disabled={activeAccounts.length === 0}
-            className={inputClassName}
-          >
-            <option value="">계좌 선택</option>
-
-            {activeAccounts.map((account) => (
-              <option
-                key={account.id}
-                value={account.id}
-              >
-                {account.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="text-sm font-medium">
-          매월 결제일
-          <input
-            name="paymentDay"
-            type="number"
-            min={1}
-            max={31}
-            defaultValue={25}
-            required
-            className={inputClassName}
-          />
-        </label>
-      </div>
-
-      <label className="mt-4 block text-sm font-medium">
-        이용기간 메모
-        <input
-          name="usagePeriodNote"
-          type="text"
-          placeholder="예: 전월 14일~당월 13일"
-          className={inputClassName}
-        />
-      </label>
-
-      <button
-        type="submit"
-        disabled={
-          isPending || activeAccounts.length === 0
-        }
-        className="mt-4 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+    <>
+      <details
+        ref={detailsRef}
+        className="mt-4 rounded-2xl border border-[var(--border)] bg-gray-50"
       >
-        {isPending ? "등록 중..." : "카드 등록"}
-      </button>
+        <summary className="cursor-pointer px-4 py-4 font-semibold">
+          새 카드 등록
+        </summary>
+
+        <form
+          ref={formRef}
+          action={formAction}
+          className="border-t border-[var(--border)] p-4"
+        >
+          {activeAccounts.length ===
+          0 ? (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              먼저 활성 계좌를
+              등록해주세요.
+            </p>
+          ) : null}
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium">
+              카드명
+              <input
+                name="name"
+                type="text"
+                maxLength={50}
+                placeholder="예: 남편 신용카드"
+                required
+                className={inputClassName}
+              />
+            </label>
+
+            <label className="text-sm font-medium">
+              소유자
+              <select
+                name="ownerType"
+                defaultValue="wife"
+                className={inputClassName}
+              >
+                <option value="wife">
+                  아내
+                </option>
+                <option value="husband">
+                  남편
+                </option>
+                <option value="joint">
+                  공동
+                </option>
+              </select>
+            </label>
+
+            <label className="text-sm font-medium">
+              카드대금 출금 계좌
+              <select
+                name="paymentAccountId"
+                required
+                disabled={
+                  activeAccounts.length ===
+                  0
+                }
+                className={inputClassName}
+              >
+                <option value="">
+                  계좌 선택
+                </option>
+
+                {activeAccounts.map(
+                  (account) => (
+                    <option
+                      key={account.id}
+                      value={account.id}
+                    >
+                      {account.name}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+
+            <label className="text-sm font-medium">
+              매월 결제일
+              <input
+                name="paymentDay"
+                type="number"
+                min={1}
+                max={31}
+                defaultValue={25}
+                required
+                className={inputClassName}
+              />
+            </label>
+          </div>
+
+          <label className="mt-4 block text-sm font-medium">
+            이용기간 메모
+            <input
+              name="usagePeriodNote"
+              type="text"
+              placeholder="예: 전월 14일~당월 13일"
+              className={inputClassName}
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={
+              isPending ||
+              activeAccounts.length === 0
+            }
+            className="mt-4 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending
+              ? "등록 중..."
+              : "카드 등록"}
+          </button>
+        </form>
+      </details>
 
       <ActionMessage state={state} />
-    </form>
+    </>
   );
 }
 
@@ -189,22 +229,31 @@ function CardRowItem({
   card: CardRow;
   accounts: Account[];
 }) {
+  const editDetailsRef =
+    useRef<HTMLDetailsElement>(null);
+
   const paymentAccount = accounts.find(
     (account) =>
-      account.id === card.payment_account_id,
+      account.id ===
+      card.payment_account_id,
   );
 
-  const selectableAccounts = accounts.filter(
-    (account) =>
-      account.is_active ||
-      account.id === card.payment_account_id,
-  );
+  const selectableAccounts =
+    accounts.filter(
+      (account) =>
+        account.is_active ||
+        account.id ===
+          card.payment_account_id,
+    );
 
   const [
     updateState,
     updateAction,
     updatePending,
-  ] = useActionState(updateCard, initialState);
+  ] = useActionState(
+    updateCard,
+    initialState,
+  );
 
   const [
     activeState,
@@ -219,7 +268,18 @@ function CardRowItem({
     deleteState,
     deleteAction,
     deletePending,
-  ] = useActionState(deleteCard, initialState);
+  ] = useActionState(
+    deleteCard,
+    initialState,
+  );
+
+  useEffect(() => {
+    if (updateState.status === "success") {
+      editDetailsRef.current?.removeAttribute(
+        "open",
+      );
+    }
+  }, [updateState]);
 
   return (
     <div className="py-5">
@@ -236,15 +296,24 @@ function CardRowItem({
               {card.name}
             </p>
 
-            <Badge>{ownerLabels[card.owner_type]}</Badge>
+            <Badge>
+              {
+                ownerLabels[
+                  card.owner_type
+                ]
+              }
+            </Badge>
 
             {!card.is_active ? (
-              <Badge tone="warn">비활성</Badge>
+              <Badge tone="warn">
+                비활성
+              </Badge>
             ) : null}
           </div>
 
           <p className="mt-2 text-xs text-gray-500">
-            결제일 매월 {card.payment_day}일
+            결제일 매월{" "}
+            {card.payment_day}일
           </p>
 
           <p className="mt-1 text-xs text-gray-500">
@@ -275,7 +344,9 @@ function CardRowItem({
             <input
               type="hidden"
               name="nextActive"
-              value={String(!card.is_active)}
+              value={String(
+                !card.is_active,
+              )}
             />
 
             <button
@@ -294,9 +365,10 @@ function CardRowItem({
           <form
             action={deleteAction}
             onSubmit={(event) => {
-              const confirmed = window.confirm(
-                `"${card.name}" 카드를 완전히 삭제할까요?\n\n거래나 정기항목에 사용된 카드라면 삭제되지 않습니다.`,
-              );
+              const confirmed =
+                window.confirm(
+                  `"${card.name}" 카드를 완전히 삭제할까요?\n\n거래나 정기항목에 사용된 카드라면 삭제되지 않습니다.`,
+                );
 
               if (!confirmed) {
                 event.preventDefault();
@@ -325,7 +397,10 @@ function CardRowItem({
       <ActionMessage state={activeState} />
       <ActionMessage state={deleteState} />
 
-      <details className="mt-4">
+      <details
+        ref={editDetailsRef}
+        className="mt-4"
+      >
         <summary className="cursor-pointer text-sm font-semibold text-gray-600">
           카드 정보 수정
         </summary>
@@ -357,12 +432,20 @@ function CardRowItem({
               소유자
               <select
                 name="ownerType"
-                defaultValue={card.owner_type}
+                defaultValue={
+                  card.owner_type
+                }
                 className={inputClassName}
               >
-                <option value="wife">아내</option>
-                <option value="husband">남편</option>
-                <option value="joint">공동</option>
+                <option value="wife">
+                  아내
+                </option>
+                <option value="husband">
+                  남편
+                </option>
+                <option value="joint">
+                  공동
+                </option>
               </select>
             </label>
 
@@ -370,21 +453,25 @@ function CardRowItem({
               카드대금 출금 계좌
               <select
                 name="paymentAccountId"
-                defaultValue={card.payment_account_id}
+                defaultValue={
+                  card.payment_account_id
+                }
                 required
                 className={inputClassName}
               >
-                {selectableAccounts.map((account) => (
-                  <option
-                    key={account.id}
-                    value={account.id}
-                  >
-                    {account.name}
-                    {!account.is_active
-                      ? " (비활성)"
-                      : ""}
-                  </option>
-                ))}
+                {selectableAccounts.map(
+                  (account) => (
+                    <option
+                      key={account.id}
+                      value={account.id}
+                    >
+                      {account.name}
+                      {!account.is_active
+                        ? " (비활성)"
+                        : ""}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
 
@@ -395,7 +482,9 @@ function CardRowItem({
                 type="number"
                 min={1}
                 max={31}
-                defaultValue={card.payment_day}
+                defaultValue={
+                  card.payment_day
+                }
                 required
                 className={inputClassName}
               />
@@ -408,7 +497,8 @@ function CardRowItem({
               name="usagePeriodNote"
               type="text"
               defaultValue={
-                card.usage_period_note ?? ""
+                card.usage_period_note ??
+                ""
               }
               className={inputClassName}
             />
@@ -423,10 +513,10 @@ function CardRowItem({
               ? "저장 중..."
               : "수정 저장"}
           </button>
-
-          <ActionMessage state={updateState} />
         </form>
       </details>
+
+      <ActionMessage state={updateState} />
     </div>
   );
 }
@@ -437,7 +527,9 @@ export function CardManager({
 }: Props) {
   return (
     <>
-      <CreateCardForm accounts={accounts} />
+      <CreateCardForm
+        accounts={accounts}
+      />
 
       <div className="mt-5 divide-y divide-[var(--border)]">
         {cards.length === 0 ? (

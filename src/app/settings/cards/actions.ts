@@ -167,7 +167,7 @@ export async function createCard(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -303,7 +303,7 @@ export async function updateCard(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -358,7 +358,7 @@ export async function toggleCardActive(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -414,7 +414,7 @@ export async function deleteCard(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",

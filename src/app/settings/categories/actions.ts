@@ -105,7 +105,9 @@ function getCategoryErrorMessage(error: {
   return "카테고리 정보를 저장하지 못했습니다.";
 }
 
-function validateName(name: string): CategoryActionState | null {
+function validateName(
+  name: string,
+): CategoryActionState | null {
   if (!name) {
     return {
       status: "error",
@@ -241,7 +243,7 @@ export async function createCategory(
     }
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -373,7 +375,7 @@ export async function updateCategory(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -428,7 +430,7 @@ export async function toggleCategoryActive(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
@@ -496,7 +498,7 @@ export async function deleteCategory(
     };
   }
 
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 
   return {
     status: "success",
