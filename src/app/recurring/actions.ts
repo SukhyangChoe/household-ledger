@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { isMonthInRecurringRange } from "@/domain/recurring";
 import { requireCurrentHousehold } from "@/lib/household/current";
 import type { Database } from "@/types/database.types";
 
@@ -169,6 +170,29 @@ function parseMonth(
   }
 
   return `${value}-01`;
+}
+
+function getCurrentMonthInKorea() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+
+  const year = parts.find(
+    (part) => part.type === "year",
+  )?.value;
+  const month = parts.find(
+    (part) => part.type === "month",
+  )?.value;
+
+  if (!year || !month) {
+    throw new Error(
+      "현재 월을 확인하지 못했습니다.",
+    );
+  }
+
+  return `${year}-${month}`;
 }
 
 function errorState(
@@ -657,10 +681,55 @@ export async function createRecurringRule(
     );
   }
 
+  const currentMonth =
+    getCurrentMonthInKorea();
+
+  const startMonth =
+    result.values.start_month.slice(0, 7);
+
+  const endMonth =
+    result.values.end_month?.slice(0, 7) ??
+    null;
+
+  const appliesToCurrentMonth =
+    isMonthInRecurringRange(
+      currentMonth,
+      startMonth,
+      endMonth,
+    );
+
+  if (appliesToCurrentMonth) {
+    const {
+      error: generationError,
+    } = await supabase.rpc(
+      "generate_recurring_transactions",
+      {
+        p_household_id: householdId,
+        p_target_month:
+          `${currentMonth}-01`,
+      },
+    );
+
+    if (generationError) {
+      console.error(
+        "Failed to generate recurring transaction after rule creation:",
+        generationError,
+      );
+
+      revalidateRecurringPaths();
+
+      return successState(
+        "정기 항목은 등록했습니다. 다만 이번 달 예정 거래 자동 생성은 완료하지 못했습니다.",
+      );
+    }
+  }
+
   revalidateRecurringPaths();
 
   return successState(
-    "정기 항목을 등록했습니다.",
+    appliesToCurrentMonth
+      ? "정기 항목을 등록하고 이번 달 예정 거래를 생성했습니다."
+      : "정기 항목을 등록했습니다.",
   );
 }
 
