@@ -84,7 +84,26 @@ export default async function LedgerPage({
 
   const { supabase, householdId } =
     await requireCurrentHousehold();
-
+  
+  const { error: generationError } = await supabase.rpc(
+    "generate_recurring_transactions",
+    {
+      p_household_id: householdId,
+      p_target_month: startDate,
+    },
+  );
+  
+  if (generationError) {
+    console.error(
+      "Failed to generate recurring transactions:",
+      generationError,
+    );
+  
+    throw new Error(
+      "선택한 달의 정기 거래를 생성하지 못했습니다.",
+    );
+  }
+  
   const [
     transactionsResult,
     accountsResult,
