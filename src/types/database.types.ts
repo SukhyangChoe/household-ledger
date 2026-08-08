@@ -703,6 +703,14 @@ export type Database = {
         Args: { p_category_id: string }
         Returns: undefined
       }
+      delete_unused_recurring_rule: {
+        Args: { p_recurring_rule_id: string }
+        Returns: undefined
+      }
+      generate_recurring_transactions: {
+        Args: { p_household_id: string; p_target_month: string }
+        Returns: number
+      }
       set_living_account: { Args: { p_account_id: string }; Returns: undefined }
       set_transaction_status: {
         Args: {
