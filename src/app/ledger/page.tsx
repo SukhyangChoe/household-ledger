@@ -52,7 +52,9 @@ function normalizeMonth(value: string | undefined, today: string) {
 
 function shiftMonth(monthValue: string, offset: number) {
   const [year, month] = monthValue.split("-").map(Number);
-  const shifted = new Date(Date.UTC(year, month - 1 + offset, 1));
+  const shifted = new Date(
+    Date.UTC(year, month - 1 + offset, 1),
+  );
 
   return `${shifted.getUTCFullYear()}-${String(
     shifted.getUTCMonth() + 1,
@@ -84,7 +86,7 @@ export default async function LedgerPage({
 
   const { supabase, householdId } =
     await requireCurrentHousehold();
-  
+
   const { error: generationError } = await supabase.rpc(
     "generate_recurring_transactions",
     {
@@ -92,18 +94,18 @@ export default async function LedgerPage({
       p_target_month: startDate,
     },
   );
-  
+
   if (generationError) {
     console.error(
       "Failed to generate recurring transactions:",
       generationError,
     );
-  
+
     throw new Error(
       "선택한 달의 정기 거래를 생성하지 못했습니다.",
     );
   }
-  
+
   const [
     transactionsResult,
     accountsResult,
@@ -118,8 +120,8 @@ export default async function LedgerPage({
       .in("status", ["planned", "confirmed"])
       .gte("effective_date", startDate)
       .lt("effective_date", nextMonthStart)
-      .order("effective_date", { ascending: false })
-      .order("created_at", { ascending: false }),
+      .order("effective_date", { ascending: true })
+      .order("created_at", { ascending: true }),
 
     supabase
       .from("accounts")
@@ -204,7 +206,10 @@ export default async function LedgerPage({
         transaction.status === "confirmed" &&
         transaction.transaction_type === "income",
     )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+    .reduce(
+      (sum, transaction) => sum + transaction.amount,
+      0,
+    );
 
   const livingExpense = transactions
     .filter(
@@ -213,7 +218,10 @@ export default async function LedgerPage({
         transaction.transaction_type === "expense" &&
         transaction.fund_purpose === "living",
     )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+    .reduce(
+      (sum, transaction) => sum + transaction.amount,
+      0,
+    );
 
   const investmentExpense = transactions
     .filter(
@@ -222,7 +230,10 @@ export default async function LedgerPage({
         transaction.transaction_type === "expense" &&
         transaction.fund_purpose === "investment",
     )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+    .reduce(
+      (sum, transaction) => sum + transaction.amount,
+      0,
+    );
 
   const unsettledCount = transactions.filter(
     (transaction) =>
@@ -240,7 +251,10 @@ export default async function LedgerPage({
           </p>
         </div>
 
-        <nav className="flex items-center gap-2" aria-label="월 이동">
+        <nav
+          className="flex items-center gap-2"
+          aria-label="월 이동"
+        >
           <Link
             href={`/ledger?month=${previousMonth}`}
             className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold"
@@ -268,10 +282,13 @@ export default async function LedgerPage({
           title="투자 목적 비용"
           value={won(investmentExpense)}
         />
-        <Card title="미정산 표시" value={`${unsettledCount}건`} />
+        <Card
+          title="미정산 표시"
+          value={`${unsettledCount}건`}
+        />
       </div>
 
-      <Card title="거래 내역">
+      <Card title="일별 거래 내역">
         <div className="mt-4">
           <TransactionManager
             accounts={accounts}
@@ -280,6 +297,7 @@ export default async function LedgerPage({
             rateRules={rateRules}
             transactions={transactions}
             defaultEffectiveDate={defaultEffectiveDate}
+            month={month}
           />
         </div>
       </Card>

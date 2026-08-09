@@ -167,8 +167,14 @@ export type Database = {
         Row: {
           created_at: string
           default_account_id: string | null
+          expense_summary_group:
+            | Database["public"]["Enums"]["expense_summary_group"]
+            | null
           household_id: string
           id: string
+          income_summary_group:
+            | Database["public"]["Enums"]["income_summary_group"]
+            | null
           is_active: boolean
           is_asset_income: boolean | null
           name: string
@@ -187,8 +193,14 @@ export type Database = {
         Insert: {
           created_at?: string
           default_account_id?: string | null
+          expense_summary_group?:
+            | Database["public"]["Enums"]["expense_summary_group"]
+            | null
           household_id: string
           id?: string
+          income_summary_group?:
+            | Database["public"]["Enums"]["income_summary_group"]
+            | null
           is_active?: boolean
           is_asset_income?: boolean | null
           name: string
@@ -207,8 +219,14 @@ export type Database = {
         Update: {
           created_at?: string
           default_account_id?: string | null
+          expense_summary_group?:
+            | Database["public"]["Enums"]["expense_summary_group"]
+            | null
           household_id?: string
           id?: string
+          income_summary_group?:
+            | Database["public"]["Enums"]["income_summary_group"]
+            | null
           is_active?: boolean
           is_asset_income?: boolean | null
           name?: string
@@ -722,7 +740,13 @@ export type Database = {
     }
     Enums: {
       expense_nature: "fixed" | "variable" | "irregular"
+      expense_summary_group:
+        | "monthly"
+        | "annual"
+        | "variable"
+        | "repayment_saving"
       fund_purpose: "living" | "investment"
+      income_summary_group: "earned" | "asset" | "variable"
       owner_type: "wife" | "husband" | "joint"
       transaction_status: "planned" | "confirmed" | "cancelled"
       transaction_type: "income" | "expense" | "transfer"
@@ -854,7 +878,14 @@ export const Constants = {
   public: {
     Enums: {
       expense_nature: ["fixed", "variable", "irregular"],
+      expense_summary_group: [
+        "monthly",
+        "annual",
+        "variable",
+        "repayment_saving",
+      ],
       fund_purpose: ["living", "investment"],
+      income_summary_group: ["earned", "asset", "variable"],
       owner_type: ["wife", "husband", "joint"],
       transaction_status: ["planned", "confirmed", "cancelled"],
       transaction_type: ["income", "expense", "transfer"],

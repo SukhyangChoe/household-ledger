@@ -53,6 +53,19 @@ const expenseNatureLabels = {
   irregular: "비정기",
 } as const;
 
+const expenseSummaryGroupLabels = {
+  monthly: "월간지출",
+  annual: "연간지출",
+  variable: "변동지출",
+  repayment_saving: "상환·적립",
+} as const;
+
+const incomeSummaryGroupLabels = {
+  earned: "근로소득",
+  asset: "자산소득",
+  variable: "변동소득",
+} as const;
+
 function formatRate(rateBps: number) {
   return `${(
     rateBps / 100
@@ -211,7 +224,26 @@ function CreateCategoryForm({
                 </p>
               ) : null}
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <label className="text-sm font-medium">
+                  수입 집계 분류
+                  <select
+                    name="incomeSummaryGroup"
+                    defaultValue="earned"
+                    className={inputClassName}
+                  >
+                    <option value="earned">
+                      근로소득
+                    </option>
+                    <option value="asset">
+                      자산소득
+                    </option>
+                    <option value="variable">
+                      변동소득
+                    </option>
+                  </select>
+                </label>
+
                 <label className="text-sm font-medium">
                   생활비 반영률
                   <select
@@ -283,17 +315,31 @@ function CreateCategoryForm({
                 </label>
               </div>
 
-              <label className="mt-4 flex items-center gap-2 text-sm">
-                <input
-                  name="isAssetIncome"
-                  type="checkbox"
-                  className="h-4 w-4 accent-emerald-700"
-                />
-                자산소득으로 집계
-              </label>
             </>
           ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <label className="text-sm font-medium">
+                지출 집계 분류
+                <select
+                  name="expenseSummaryGroup"
+                  defaultValue="monthly"
+                  className={inputClassName}
+                >
+                  <option value="monthly">
+                    월간지출
+                  </option>
+                  <option value="annual">
+                    연간지출
+                  </option>
+                  <option value="variable">
+                    변동지출
+                  </option>
+                  <option value="repayment_saving">
+                    상환·적립
+                  </option>
+                </select>
+              </label>
+
               <label className="text-sm font-medium">
                 선택 시 자금 목적
                 <select
@@ -336,10 +382,10 @@ function CreateCategoryForm({
           )}
 
           <p className="mt-3 text-xs leading-5 text-gray-500">
-            카테고리의 기본값은 거래
-            입력 시 자동 선택되지만,
-            실제 거래에서는 필요에
-            따라 변경할 수 있습니다.
+            집계 분류는 월별 가계부에서
+            수입·지출을 묶어 보여줄 때
+            사용합니다. 다른 기본값은
+            거래 입력 시 자동 선택됩니다.
           </p>
 
           <button
@@ -470,17 +516,42 @@ function CategoryRow({
 
             {category.transaction_type ===
             "income" ? (
-              category.is_asset_income ? (
-                <Badge tone="good">
-                  자산소득
+              category.income_summary_group ? (
+                <Badge
+                  tone={
+                    category.income_summary_group ===
+                    "asset"
+                      ? "good"
+                      : "neutral"
+                  }
+                >
+                  {
+                    incomeSummaryGroupLabels[
+                      category.income_summary_group
+                    ]
+                  }
                 </Badge>
               ) : (
-                <Badge>
-                  일반 수입
+                <Badge tone="warn">
+                  분류 필요
                 </Badge>
               )
             ) : (
               <>
+                {category.expense_summary_group ? (
+                  <Badge>
+                    {
+                      expenseSummaryGroupLabels[
+                        category.expense_summary_group
+                      ]
+                    }
+                  </Badge>
+                ) : (
+                  <Badge tone="warn">
+                    분류 필요
+                  </Badge>
+                )}
+
                 <Badge>
                   {
                     fundPurposeLabels[
@@ -532,12 +603,7 @@ function CategoryRow({
                   : ""}
               </p>
             </>
-          ) : (
-            <p className="mt-2 text-xs text-gray-500">
-              거래 선택 시 기본값으로
-              자동 입력됩니다.
-            </p>
-          )}
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -647,7 +713,33 @@ function CategoryRow({
           {category.transaction_type ===
           "income" ? (
             <>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <label className="text-sm font-medium">
+                  수입 집계 분류
+                  <select
+                    name="incomeSummaryGroup"
+                    defaultValue={
+                      category.income_summary_group ??
+                      ""
+                    }
+                    required
+                    className={inputClassName}
+                  >
+                    <option value="" disabled>
+                      집계 분류 선택
+                    </option>
+                    <option value="earned">
+                      근로소득
+                    </option>
+                    <option value="asset">
+                      자산소득
+                    </option>
+                    <option value="variable">
+                      변동소득
+                    </option>
+                  </select>
+                </label>
+
                 <label className="text-sm font-medium">
                   생활비 반영률
                   <select
@@ -727,21 +819,38 @@ function CategoryRow({
                 </label>
               </div>
 
-              <label className="mt-4 flex items-center gap-2 text-sm">
-                <input
-                  name="isAssetIncome"
-                  type="checkbox"
-                  defaultChecked={
-                    category.is_asset_income ??
-                    false
-                  }
-                  className="h-4 w-4 accent-emerald-700"
-                />
-                자산소득으로 집계
-              </label>
             </>
           ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <label className="text-sm font-medium">
+                지출 집계 분류
+                <select
+                  name="expenseSummaryGroup"
+                  defaultValue={
+                    category.expense_summary_group ??
+                    ""
+                  }
+                  required
+                  className={inputClassName}
+                >
+                  <option value="" disabled>
+                    집계 분류 선택
+                  </option>
+                  <option value="monthly">
+                    월간지출
+                  </option>
+                  <option value="annual">
+                    연간지출
+                  </option>
+                  <option value="variable">
+                    변동지출
+                  </option>
+                  <option value="repayment_saving">
+                    상환·적립
+                  </option>
+                </select>
+              </label>
+
               <label className="text-sm font-medium">
                 선택 시 자금 목적
                 <select

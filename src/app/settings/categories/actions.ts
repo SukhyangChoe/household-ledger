@@ -8,6 +8,15 @@ import type { Database } from "@/types/database.types";
 type TransactionType = "income" | "expense";
 type FundPurpose = "living" | "investment";
 type ExpenseNature = "fixed" | "variable" | "irregular";
+type ExpenseSummaryGroup =
+  | "monthly"
+  | "annual"
+  | "variable"
+  | "repayment_saving";
+type IncomeSummaryGroup =
+  | "earned"
+  | "asset"
+  | "variable";
 
 type CategoryUpdate =
   Database["public"]["Tables"]["categories"]["Update"];
@@ -48,6 +57,35 @@ function parseExpenseNature(
     value === "fixed" ||
     value === "variable" ||
     value === "irregular"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function parseExpenseSummaryGroup(
+  value: string,
+): ExpenseSummaryGroup | null {
+  if (
+    value === "monthly" ||
+    value === "annual" ||
+    value === "variable" ||
+    value === "repayment_saving"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function parseIncomeSummaryGroup(
+  value: string,
+): IncomeSummaryGroup | null {
+  if (
+    value === "earned" ||
+    value === "asset" ||
+    value === "variable"
   ) {
     return value;
   }
@@ -100,6 +138,17 @@ function getCategoryErrorMessage(error: {
     )
   ) {
     return "지출 카테고리의 자금 목적과 지출 성격을 선택해주세요.";
+  }
+
+  if (
+    error.message.includes(
+      "CATEGORY_INCOME_SUMMARY_GROUP_REQUIRED",
+    ) ||
+    error.message.includes(
+      "CATEGORY_EXPENSE_SUMMARY_GROUP_REQUIRED",
+    )
+  ) {
+    return "월별 가계부에 사용할 집계 분류를 선택해주세요.";
   }
 
   return "카테고리 정보를 저장하지 못했습니다.";
@@ -159,8 +208,18 @@ export async function createCategory(
       formData,
       "defaultAccountId",
     );
-    const isAssetIncome =
-      formData.get("isAssetIncome") === "on";
+    const incomeSummaryGroup =
+      parseIncomeSummaryGroup(
+        getText(formData, "incomeSummaryGroup"),
+      );
+
+    if (!incomeSummaryGroup) {
+      return {
+        status: "error",
+        message:
+          "수입 카테고리의 집계 분류를 선택해주세요.",
+      };
+    }
 
     if (!rateRuleId) {
       return {
@@ -180,7 +239,10 @@ export async function createCategory(
         suggested_fund_purpose: null,
         suggested_expense_nature: null,
         rate_rule_id: rateRuleId,
-        is_asset_income: isAssetIncome,
+        income_summary_group: incomeSummaryGroup,
+        expense_summary_group: null,
+        is_asset_income:
+          incomeSummaryGroup === "asset",
         default_account_id:
           defaultAccountId || null,
         is_active: true,
@@ -199,12 +261,24 @@ export async function createCategory(
       };
     }
   } else {
+    const expenseSummaryGroup =
+      parseExpenseSummaryGroup(
+        getText(formData, "expenseSummaryGroup"),
+      );
     const fundPurpose = parseFundPurpose(
       getText(formData, "fundPurpose"),
     );
     const expenseNature = parseExpenseNature(
       getText(formData, "expenseNature"),
     );
+
+    if (!expenseSummaryGroup) {
+      return {
+        status: "error",
+        message:
+          "지출 카테고리의 집계 분류를 선택해주세요.",
+      };
+    }
 
     if (!fundPurpose || !expenseNature) {
       return {
@@ -223,6 +297,8 @@ export async function createCategory(
         name,
         suggested_fund_purpose: fundPurpose,
         suggested_expense_nature: expenseNature,
+        expense_summary_group: expenseSummaryGroup,
+        income_summary_group: null,
         rate_rule_id: null,
         is_asset_income: null,
         default_account_id: null,
@@ -305,8 +381,18 @@ export async function updateCategory(
       formData,
       "defaultAccountId",
     );
-    const isAssetIncome =
-      formData.get("isAssetIncome") === "on";
+    const incomeSummaryGroup =
+      parseIncomeSummaryGroup(
+        getText(formData, "incomeSummaryGroup"),
+      );
+
+    if (!incomeSummaryGroup) {
+      return {
+        status: "error",
+        message:
+          "수입 카테고리의 집계 분류를 선택해주세요.",
+      };
+    }
 
     if (!rateRuleId) {
       return {
@@ -319,19 +405,34 @@ export async function updateCategory(
     updateValues = {
       name,
       rate_rule_id: rateRuleId,
-      is_asset_income: isAssetIncome,
+      income_summary_group: incomeSummaryGroup,
+      expense_summary_group: null,
+      is_asset_income:
+        incomeSummaryGroup === "asset",
       default_account_id:
         defaultAccountId || null,
       suggested_fund_purpose: null,
       suggested_expense_nature: null,
     };
   } else {
+    const expenseSummaryGroup =
+      parseExpenseSummaryGroup(
+        getText(formData, "expenseSummaryGroup"),
+      );
     const fundPurpose = parseFundPurpose(
       getText(formData, "fundPurpose"),
     );
     const expenseNature = parseExpenseNature(
       getText(formData, "expenseNature"),
     );
+
+    if (!expenseSummaryGroup) {
+      return {
+        status: "error",
+        message:
+          "지출 카테고리의 집계 분류를 선택해주세요.",
+      };
+    }
 
     if (!fundPurpose || !expenseNature) {
       return {
@@ -345,6 +446,8 @@ export async function updateCategory(
       name,
       suggested_fund_purpose: fundPurpose,
       suggested_expense_nature: expenseNature,
+      expense_summary_group: expenseSummaryGroup,
+      income_summary_group: null,
       rate_rule_id: null,
       is_asset_income: null,
       default_account_id: null,

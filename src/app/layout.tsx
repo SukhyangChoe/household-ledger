@@ -82,19 +82,13 @@ export default function RootLayout({
           </aside>
 
           <div className="min-w-0 pb-20 lg:pb-0">
-            <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-[var(--border)] bg-[rgba(247,246,242,0.92)] px-5 backdrop-blur lg:px-8">
+            <header className="sticky top-0 z-10 flex h-16 items-center border-b border-[var(--border)] bg-[rgba(247,246,242,0.92)] px-5 backdrop-blur lg:px-8">
               <div>
                 <p className="text-xs text-gray-500">
                   결제일 기준 · 데모 모드
                 </p>
-                <p className="font-semibold">
-                  2026년 7월
-                </p>
+                <p className="font-semibold">2026년 7월</p>
               </div>
-
-              <button className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white">
-                + 거래 추가
-              </button>
             </header>
 
             <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
