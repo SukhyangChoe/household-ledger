@@ -969,14 +969,58 @@ function TransactionEditForm({
   );
 }
 
+
+type ExpenseSummaryGroup = NonNullable<
+  Category["expense_summary_group"]
+>;
+type IncomeSummaryGroup = NonNullable<
+  Category["income_summary_group"]
+>;
+
+const expenseSummaryGroupLabels: Record<
+  ExpenseSummaryGroup,
+  string
+> = {
+  monthly: "월간지출",
+  annual: "연간지출",
+  variable: "변동지출",
+  repayment_saving: "상환·적립",
+};
+
+const incomeSummaryGroupLabels: Record<
+  IncomeSummaryGroup,
+  string
+> = {
+  earned: "근로소득",
+  asset: "자산소득",
+  variable: "변동소득",
+};
+
+const expenseSummaryGroups: ExpenseSummaryGroup[] = [
+  "monthly",
+  "annual",
+  "variable",
+  "repayment_saving",
+];
+
+const incomeSummaryGroups: IncomeSummaryGroup[] = [
+  "earned",
+  "asset",
+  "variable",
+];
+
 function TransactionItem({
   transaction,
+  tone,
+  showUnclassified,
   accounts,
   cards,
   categories,
   rateRules,
 }: {
   transaction: Transaction;
+  tone: "expense" | "income";
+  showUnclassified: boolean;
 } & TransactionLookupProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
@@ -990,6 +1034,28 @@ function TransactionItem({
       deletePlannedTransaction,
       initialState,
     );
+
+  const category = categories.find(
+    (item) => item.id === transaction.category_id,
+  );
+
+  const expenseSummaryGroup =
+    tone === "expense"
+      ? category?.expense_summary_group ?? null
+      : null;
+  const incomeSummaryGroup =
+    tone === "income"
+      ? category?.income_summary_group ?? null
+      : null;
+
+  const summaryGroupLabel =
+    tone === "expense"
+      ? expenseSummaryGroup
+        ? expenseSummaryGroupLabels[expenseSummaryGroup]
+        : "미분류"
+      : incomeSummaryGroup
+        ? incomeSummaryGroupLabels[incomeSummaryGroup]
+        : "미분류";
 
   const editable =
     !transaction.settlement_completed_at &&
@@ -1010,8 +1076,100 @@ function TransactionItem({
   const interactive =
     editable || canChangeStatus || canDelete;
 
-  const summary = (
-    <div className="flex min-w-0 items-center gap-2 px-2 py-1.5">
+  const desktopGridClass =
+    tone === "expense"
+      ? showUnclassified
+        ? "md:grid-cols-[minmax(140px,1.55fr)_repeat(5,minmax(72px,1fr))]"
+        : "md:grid-cols-[minmax(140px,1.55fr)_repeat(4,minmax(78px,1fr))]"
+      : showUnclassified
+        ? "md:grid-cols-[minmax(140px,1.55fr)_repeat(4,minmax(78px,1fr))]"
+        : "md:grid-cols-[minmax(140px,1.55fr)_repeat(3,minmax(86px,1fr))]";
+
+  const nameCell = (
+    <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5">
+      <span className="truncate text-xs font-medium text-gray-800 sm:text-sm">
+        {transaction.name}
+      </span>
+
+      {transaction.status === "planned" ? (
+        <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-700">
+          예정
+        </span>
+      ) : null}
+
+      {!expenseSummaryGroup &&
+      !incomeSummaryGroup ? (
+        <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-gray-500">
+          분류 필요
+        </span>
+      ) : null}
+
+      {interactive ? (
+        <span className="ml-auto shrink-0 text-[10px] font-medium text-gray-400 group-open:text-gray-700">
+          수정
+        </span>
+      ) : null}
+    </div>
+  );
+
+  const amountClassName =
+    tone === "income"
+      ? "text-emerald-700"
+      : "text-gray-900";
+
+  const desktopSummary = (
+    <div
+      className={`hidden md:grid ${desktopGridClass}`}
+    >
+      {nameCell}
+
+      {tone === "expense"
+        ? expenseSummaryGroups.map((group) => (
+            <div
+              key={group}
+              className="flex items-center justify-end border-l border-black/5 px-2 py-1.5"
+            >
+              {expenseSummaryGroup === group ? (
+                <span
+                  className={`text-xs font-semibold tabular-nums sm:text-sm ${amountClassName}`}
+                >
+                  {won(transaction.amount)}
+                </span>
+              ) : null}
+            </div>
+          ))
+        : incomeSummaryGroups.map((group) => (
+            <div
+              key={group}
+              className="flex items-center justify-end border-l border-black/5 px-2 py-1.5"
+            >
+              {incomeSummaryGroup === group ? (
+                <span
+                  className={`text-xs font-semibold tabular-nums sm:text-sm ${amountClassName}`}
+                >
+                  {won(transaction.amount)}
+                </span>
+              ) : null}
+            </div>
+          ))}
+
+      {showUnclassified ? (
+        <div className="flex items-center justify-end border-l border-black/5 px-2 py-1.5">
+          {!expenseSummaryGroup &&
+          !incomeSummaryGroup ? (
+            <span
+              className={`text-xs font-semibold tabular-nums sm:text-sm ${amountClassName}`}
+            >
+              {won(transaction.amount)}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const mobileSummary = (
+    <div className="flex min-w-0 items-center gap-2 px-2 py-1.5 md:hidden">
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <span className="truncate text-xs font-medium text-gray-800 sm:text-sm">
           {transaction.name}
@@ -1022,14 +1180,21 @@ function TransactionItem({
             예정
           </span>
         ) : null}
+
+        {!expenseSummaryGroup &&
+        !incomeSummaryGroup ? (
+          <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-gray-500">
+            분류 필요
+          </span>
+        ) : null}
       </div>
 
+      <span className="shrink-0 text-[10px] font-medium text-gray-400">
+        {summaryGroupLabel}
+      </span>
+
       <span
-        className={
-          transaction.transaction_type === "income"
-            ? "shrink-0 text-xs font-semibold tabular-nums text-emerald-700 sm:text-sm"
-            : "shrink-0 text-xs font-semibold tabular-nums text-gray-900 sm:text-sm"
-        }
+        className={`shrink-0 text-xs font-semibold tabular-nums sm:text-sm ${amountClassName}`}
       >
         {won(transaction.amount)}
       </span>
@@ -1040,6 +1205,13 @@ function TransactionItem({
         </span>
       ) : null}
     </div>
+  );
+
+  const summary = (
+    <>
+      {desktopSummary}
+      {mobileSummary}
+    </>
   );
 
   if (!interactive) {
@@ -1185,6 +1357,7 @@ function TransactionColumn({
   title,
   tone,
   transactions,
+  showUnclassified,
   accounts,
   cards,
   categories,
@@ -1193,6 +1366,7 @@ function TransactionColumn({
   title: "지출" | "수입";
   tone: "expense" | "income";
   transactions: Transaction[];
+  showUnclassified: boolean;
 } & TransactionLookupProps) {
   const empty = transactions.length === 0;
 
@@ -1200,8 +1374,8 @@ function TransactionColumn({
     <div
       className={[
         tone === "expense"
-          ? "border-t border-[var(--border)] bg-orange-50/30 md:border-l md:border-t-0"
-          : "border-t border-[var(--border)] bg-emerald-50/30 md:border-l md:border-t-0",
+          ? "border-t border-[var(--border)] bg-orange-50/20 md:border-l md:border-t-0"
+          : "border-t border-[var(--border)] bg-emerald-50/20 md:border-l md:border-t-0",
         empty ? "hidden md:block" : "",
       ]
         .filter(Boolean)
@@ -1219,6 +1393,8 @@ function TransactionColumn({
             <TransactionItem
               key={transaction.id}
               transaction={transaction}
+              tone={tone}
+              showUnclassified={showUnclassified}
               accounts={accounts}
               cards={cards}
               categories={categories}
@@ -1231,12 +1407,86 @@ function TransactionColumn({
   );
 }
 
+function ExpenseHeader({
+  showUnclassified,
+}: {
+  showUnclassified: boolean;
+}) {
+  const gridClass = showUnclassified
+    ? "grid-cols-[minmax(140px,1.55fr)_repeat(5,minmax(72px,1fr))]"
+    : "grid-cols-[minmax(140px,1.55fr)_repeat(4,minmax(78px,1fr))]";
+
+  return (
+    <div className="border-l border-[var(--border)] bg-orange-50/70">
+      <div className="border-b border-[var(--border)] px-3 py-1.5 text-center text-xs font-bold text-gray-600">
+        지출
+      </div>
+      <div className={`grid ${gridClass} text-[10px] font-semibold text-gray-500`}>
+        <div className="px-2 py-1.5">항목</div>
+        {expenseSummaryGroups.map((group) => (
+          <div
+            key={group}
+            className="border-l border-black/5 px-1 py-1.5 text-center"
+          >
+            {expenseSummaryGroupLabels[group]}
+          </div>
+        ))}
+        {showUnclassified ? (
+          <div className="border-l border-black/5 px-1 py-1.5 text-center text-amber-700">
+            미분류
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function IncomeHeader({
+  showUnclassified,
+}: {
+  showUnclassified: boolean;
+}) {
+  const gridClass = showUnclassified
+    ? "grid-cols-[minmax(140px,1.55fr)_repeat(4,minmax(78px,1fr))]"
+    : "grid-cols-[minmax(140px,1.55fr)_repeat(3,minmax(86px,1fr))]";
+
+  return (
+    <div className="border-l border-[var(--border)] bg-emerald-50/70">
+      <div className="border-b border-[var(--border)] px-3 py-1.5 text-center text-xs font-bold text-gray-600">
+        수입
+      </div>
+      <div className={`grid ${gridClass} text-[10px] font-semibold text-gray-500`}>
+        <div className="px-2 py-1.5">항목</div>
+        {incomeSummaryGroups.map((group) => (
+          <div
+            key={group}
+            className="border-l border-black/5 px-1 py-1.5 text-center"
+          >
+            {incomeSummaryGroupLabels[group]}
+          </div>
+        ))}
+        {showUnclassified ? (
+          <div className="border-l border-black/5 px-1 py-1.5 text-center text-amber-700">
+            미분류
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function TransactionManager(props: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const daysInMonth = getDaysInMonth(props.month);
   const monthNumber = Number(props.month.slice(5, 7));
 
   const transactionsByDate = new Map<string, Transaction[]>();
+  const categoryMap = new Map(
+    props.categories.map((category) => [
+      category.id,
+      category,
+    ]),
+  );
 
   for (const transaction of props.transactions) {
     const existing =
@@ -1244,6 +1494,39 @@ export function TransactionManager(props: Props) {
     existing.push(transaction);
     transactionsByDate.set(transaction.effective_date, existing);
   }
+
+  const showExpenseUnclassified = props.transactions.some(
+    (transaction) => {
+      if (
+        transaction.transaction_type !== "expense" &&
+        transaction.transaction_type !== "transfer"
+      ) {
+        return false;
+      }
+
+      if (!transaction.category_id) {
+        return true;
+      }
+
+      return !categoryMap.get(transaction.category_id)
+        ?.expense_summary_group;
+    },
+  );
+
+  const showIncomeUnclassified = props.transactions.some(
+    (transaction) => {
+      if (transaction.transaction_type !== "income") {
+        return false;
+      }
+
+      if (!transaction.category_id) {
+        return true;
+      }
+
+      return !categoryMap.get(transaction.category_id)
+        ?.income_summary_group;
+    },
+  );
 
   return (
     <>
@@ -1253,7 +1536,7 @@ export function TransactionManager(props: Props) {
             {monthNumber}월 일별 거래
           </p>
           <p className="mt-1 text-xs text-gray-500">
-            거래명과 금액 중심으로 한 달 흐름을 빠르게 확인합니다.
+            항목명은 고정하고 금액을 집계 분류별 칸에 표시합니다.
           </p>
         </div>
 
@@ -1267,21 +1550,24 @@ export function TransactionManager(props: Props) {
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
-        <div className="hidden grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)] bg-gray-50 text-xs font-bold text-gray-600 md:grid">
-          <div className="px-2 py-2 text-center">날짜</div>
-          <div className="border-l border-[var(--border)] bg-orange-50/70 px-3 py-2">
-            지출
+        <div className="hidden grid-cols-[72px_minmax(0,1.25fr)_minmax(0,1fr)] bg-gray-50 md:grid">
+          <div className="flex items-center justify-center px-2 py-2 text-xs font-bold text-gray-600">
+            날짜
           </div>
-          <div className="border-l border-[var(--border)] bg-emerald-50/70 px-3 py-2">
-            수입
-          </div>
+          <ExpenseHeader
+            showUnclassified={showExpenseUnclassified}
+          />
+          <IncomeHeader
+            showUnclassified={showIncomeUnclassified}
+          />
         </div>
 
         {Array.from({ length: daysInMonth }, (_, index) => {
           const day = index + 1;
           const date = buildDate(props.month, day);
           const weekday = getWeekday(props.month, day);
-          const dayTransactions = transactionsByDate.get(date) ?? [];
+          const dayTransactions =
+            transactionsByDate.get(date) ?? [];
           const expenseTransactions = dayTransactions.filter(
             (transaction) =>
               transaction.transaction_type === "expense" ||
@@ -1295,7 +1581,7 @@ export function TransactionManager(props: Props) {
           return (
             <div
               key={date}
-              className="grid border-t border-[var(--border)] first:border-t-0 md:grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)]"
+              className="grid border-t border-[var(--border)] first:border-t-0 md:grid-cols-[72px_minmax(0,1.25fr)_minmax(0,1fr)]"
             >
               <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-2 md:justify-center md:bg-white md:px-2 md:py-1.5">
                 <span className="text-sm font-bold md:hidden">
@@ -1313,8 +1599,12 @@ export function TransactionManager(props: Props) {
                         : "text-gray-400"
                   }`}
                 >
-                  <span className="md:hidden">· {weekday}요일</span>
-                  <span className="hidden md:inline">{weekday}</span>
+                  <span className="md:hidden">
+                    · {weekday}요일
+                  </span>
+                  <span className="hidden md:inline">
+                    {weekday}
+                  </span>
                 </span>
               </div>
 
@@ -1322,6 +1612,7 @@ export function TransactionManager(props: Props) {
                 title="지출"
                 tone="expense"
                 transactions={expenseTransactions}
+                showUnclassified={showExpenseUnclassified}
                 accounts={props.accounts}
                 cards={props.cards}
                 categories={props.categories}
@@ -1332,6 +1623,7 @@ export function TransactionManager(props: Props) {
                 title="수입"
                 tone="income"
                 transactions={incomeTransactions}
+                showUnclassified={showIncomeUnclassified}
                 accounts={props.accounts}
                 cards={props.cards}
                 categories={props.categories}
