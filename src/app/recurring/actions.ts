@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { isMonthInRecurringRange } from "@/domain/recurring";
+import {
+  hasScheduledOccurrenceInRange,
+  isMonthScheduledForRule,
+  type RecurrenceFrequency,
+} from "@/domain/recurring";
 import { requireCurrentHousehold } from "@/lib/household/current";
 import type { Database } from "@/types/database.types";
 
@@ -19,17 +23,14 @@ type PaymentMethod =
 
 type OwnerType =
   Database["public"]["Enums"]["owner_type"];
-
 type FundPurpose =
   Database["public"]["Enums"]["fund_purpose"];
-
 type ExpenseNature =
   Database["public"]["Enums"]["expense_nature"];
 
 type HouseholdContext = Awaited<
   ReturnType<typeof requireCurrentHousehold>
 >;
-
 type SupabaseClient =
   HouseholdContext["supabase"];
 
@@ -38,13 +39,20 @@ export type RecurringActionState = {
   message: string;
 };
 
+type RecurringRuleValues = Omit<
+  RecurringRuleInsert,
+  | "household_id"
+  | "recurrence_frequency"
+  | "recurrence_month"
+> & {
+  recurrence_frequency: RecurrenceFrequency;
+  recurrence_month: number | null;
+};
+
 type BuildValuesResult =
   | {
       ok: true;
-      values: Omit<
-        RecurringRuleInsert,
-        "household_id"
-      >;
+      values: RecurringRuleValues;
     }
   | {
       ok: false;
@@ -79,6 +87,19 @@ function parsePaymentMethod(
   if (
     value === "account" ||
     value === "card"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function parseRecurrenceFrequency(
+  value: string,
+): RecurrenceFrequency | null {
+  if (
+    value === "monthly" ||
+    value === "yearly"
   ) {
     return value;
   }
@@ -158,6 +179,22 @@ function parsePaymentDay(
   return parsed;
 }
 
+function parseRecurrenceMonth(
+  value: string,
+) {
+  const parsed = Number(value);
+
+  if (
+    !Number.isInteger(parsed) ||
+    parsed < 1 ||
+    parsed > 12
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
+
 function parseMonth(
   value: string,
 ) {
@@ -173,11 +210,14 @@ function parseMonth(
 }
 
 function getCurrentMonthInKorea() {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(new Date());
+  const parts = new Intl.DateTimeFormat(
+    "en-US",
+    {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+    },
+  ).formatToParts(new Date());
 
   const year = parts.find(
     (part) => part.type === "year",
@@ -239,7 +279,10 @@ async function buildRecurringValues(
   supabase: SupabaseClient,
   householdId: string,
 ): Promise<BuildValuesResult> {
-  const name = getText(formData, "name");
+  const name = getText(
+    formData,
+    "name",
+  );
   const transactionType =
     parseTransactionType(
       getText(
@@ -252,6 +295,13 @@ async function buildRecurringValues(
       getText(
         formData,
         "paymentMethod",
+      ),
+    );
+  const recurrenceFrequency =
+    parseRecurrenceFrequency(
+      getText(
+        formData,
+        "recurrenceFrequency",
       ),
     );
   const amount = parsePositiveInteger(
@@ -311,6 +361,14 @@ async function buildRecurringValues(
     };
   }
 
+  if (!recurrenceFrequency) {
+    return {
+      ok: false,
+      message:
+        "반복 주기를 선택해주세요.",
+    };
+  }
+
   if (
     transactionType === "income" &&
     paymentMethod !== "account"
@@ -358,6 +416,45 @@ async function buildRecurringValues(
       message:
         "종료 월은 시작 월보다 빠를 수 없습니다.",
     };
+  }
+
+  let recurrenceMonth: number | null =
+    null;
+
+  if (
+    recurrenceFrequency === "yearly"
+  ) {
+    recurrenceMonth =
+      parseRecurrenceMonth(
+        getText(
+          formData,
+          "recurrenceMonth",
+        ),
+      );
+
+    if (!recurrenceMonth) {
+      return {
+        ok: false,
+        message:
+          "매년 반복할 반영 월을 선택해주세요.",
+      };
+    }
+
+    if (
+      endMonth &&
+      !hasScheduledOccurrenceInRange(
+        startMonth.slice(0, 7),
+        endMonth.slice(0, 7),
+        recurrenceFrequency,
+        recurrenceMonth,
+      )
+    ) {
+      return {
+        ok: false,
+        message:
+          "시작 월과 종료 월 사이에 설정한 연간 반영 월이 없습니다.",
+      };
+    }
   }
 
   if (!categoryId) {
@@ -476,7 +573,7 @@ async function buildRecurringValues(
       return {
         ok: false,
         message:
-          "매월 반영일을 1일부터 31일 사이로 입력해주세요.",
+          "반영일을 1일부터 31일 사이로 입력해주세요.",
       };
     }
   } else {
@@ -525,7 +622,7 @@ async function buildRecurringValues(
     return {
       ok: false,
       message:
-        "매월 반영일을 확인하지 못했습니다.",
+        "반영일을 확인하지 못했습니다.",
     };
   }
 
@@ -576,7 +673,7 @@ async function buildRecurringValues(
       return {
         ok: false,
         message:
-          "선택한 생활비 반영률을 확인하지 못했습니다.",
+          "선택한 생활비 반영률을 확인해주세요.",
       };
     }
   } else {
@@ -621,6 +718,10 @@ async function buildRecurringValues(
       amount,
       start_month: startMonth,
       end_month: endMonth,
+      recurrence_frequency:
+        recurrenceFrequency,
+      recurrence_month:
+        recurrenceMonth,
       payment_day: paymentDay,
       account_id: accountId,
       card_id: cardId,
@@ -683,19 +784,19 @@ export async function createRecurringRule(
 
   const currentMonth =
     getCurrentMonthInKorea();
-
-  const startMonth =
-    result.values.start_month.slice(0, 7);
-
-  const endMonth =
-    result.values.end_month?.slice(0, 7) ??
-    null;
-
   const appliesToCurrentMonth =
-    isMonthInRecurringRange(
+    isMonthScheduledForRule(
       currentMonth,
-      startMonth,
-      endMonth,
+      result.values.start_month.slice(
+        0,
+        7,
+      ),
+      result.values.end_month?.slice(
+        0,
+        7,
+      ) ?? null,
+      result.values.recurrence_frequency,
+      result.values.recurrence_month,
     );
 
   if (appliesToCurrentMonth) {
@@ -829,7 +930,10 @@ export async function toggleRecurringRuleActive(
     householdId,
   } = await requireCurrentHousehold();
 
-  const { error } = await supabase
+  const {
+    data: updatedRule,
+    error,
+  } = await supabase
     .from("recurring_rules")
     .update({
       is_active: nextActive,
@@ -838,9 +942,13 @@ export async function toggleRecurringRuleActive(
       "household_id",
       householdId,
     )
-    .eq("id", recurringRuleId);
+    .eq("id", recurringRuleId)
+    .select(
+      "id, start_month, end_month, recurrence_frequency, recurrence_month",
+    )
+    .maybeSingle();
 
-  if (error) {
+  if (error || !updatedRule) {
     console.error(
       "Failed to toggle recurring rule:",
       error,
@@ -851,32 +959,53 @@ export async function toggleRecurringRuleActive(
     );
   }
 
+  let generatedCurrentMonth = false;
+
   if (nextActive) {
     const currentMonth =
       getCurrentMonthInKorea();
-
-    const {
-      error: generationError,
-    } = await supabase.rpc(
-      "generate_recurring_transactions",
-      {
-        p_household_id: householdId,
-        p_target_month:
-          `${currentMonth}-01`,
-      },
-    );
-
-    if (generationError) {
-      console.error(
-        "Failed to generate recurring transaction after reactivation:",
-        generationError,
+    const appliesToCurrentMonth =
+      isMonthScheduledForRule(
+        currentMonth,
+        updatedRule.start_month.slice(
+          0,
+          7,
+        ),
+        updatedRule.end_month?.slice(
+          0,
+          7,
+        ) ?? null,
+        updatedRule.recurrence_frequency,
+        updatedRule.recurrence_month,
       );
 
-      revalidateRecurringPaths();
-
-      return successState(
-        "정기 항목은 다시 활성화했습니다. 다만 이번 달 예정 거래 자동 생성은 완료하지 못했습니다.",
+    if (appliesToCurrentMonth) {
+      const {
+        error: generationError,
+      } = await supabase.rpc(
+        "generate_recurring_transactions",
+        {
+          p_household_id:
+            householdId,
+          p_target_month:
+            `${currentMonth}-01`,
+        },
       );
+
+      if (generationError) {
+        console.error(
+          "Failed to generate recurring transaction after reactivation:",
+          generationError,
+        );
+
+        revalidateRecurringPaths();
+
+        return successState(
+          "정기 항목은 다시 활성화했습니다. 다만 이번 달 예정 거래 자동 생성은 완료하지 못했습니다.",
+        );
+      }
+
+      generatedCurrentMonth = true;
     }
   }
 
@@ -884,7 +1013,9 @@ export async function toggleRecurringRuleActive(
 
   return successState(
     nextActive
-      ? "정기 항목을 다시 활성화하고 필요한 이번 달 예정 거래를 생성했습니다."
+      ? generatedCurrentMonth
+        ? "정기 항목을 다시 활성화하고 필요한 이번 달 예정 거래를 생성했습니다."
+        : "정기 항목을 다시 활성화했습니다."
       : "정기 항목을 비활성화했습니다.",
   );
 }

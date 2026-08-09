@@ -15,33 +15,29 @@ import {
   type RecurringActionState,
 } from "@/app/recurring/actions";
 import { Badge } from "@/components/ui";
-import {
-  occurrenceProgress,
-} from "@/domain/recurring";
+import { occurrenceProgress } from "@/domain/recurring";
 import type { Database } from "@/types/database.types";
 
 type Rule =
   Database["public"]["Tables"]["recurring_rules"]["Row"];
-
 type Account =
   Database["public"]["Tables"]["accounts"]["Row"];
-
 type Card =
   Database["public"]["Tables"]["cards"]["Row"];
-
 type Category =
   Database["public"]["Tables"]["categories"]["Row"];
-
 type RateRule =
   Database["public"]["Tables"]["rate_rules"]["Row"];
 
 type RecurringTransactionType =
   | "income"
   | "expense";
-
 type PaymentMethod =
   | "account"
   | "card";
+type RecurrenceFrequency =
+  | "monthly"
+  | "yearly";
 
 type Props = {
   rules: Rule[];
@@ -110,6 +106,17 @@ function monthText(
   return value.slice(0, 7);
 }
 
+function frequencyText(rule: Rule) {
+  if (
+    rule.recurrence_frequency ===
+    "yearly"
+  ) {
+    return `매년 ${rule.recurrence_month ?? "?"}월`;
+  }
+
+  return "매월";
+}
+
 function ActionMessage({
   state,
 }: {
@@ -153,6 +160,19 @@ function FormFields({
         ? "card"
         : "account";
 
+  const initialStartMonth =
+    initialRule?.start_month.slice(
+      0,
+      7,
+    ) ?? currentMonth;
+
+  const initialRecurrenceFrequency:
+    RecurrenceFrequency =
+      initialRule?.recurrence_frequency ===
+      "yearly"
+        ? "yearly"
+        : "monthly";
+
   const [
     transactionType,
     setTransactionType,
@@ -167,6 +187,28 @@ function FormFields({
     initialTransactionType === "income"
       ? "account"
       : initialPaymentMethod,
+  );
+
+  const [
+    recurrenceFrequency,
+    setRecurrenceFrequency,
+  ] = useState<RecurrenceFrequency>(
+    initialRecurrenceFrequency,
+  );
+
+  const [
+    startMonth,
+    setStartMonth,
+  ] = useState(initialStartMonth);
+
+  const [
+    recurrenceMonth,
+    setRecurrenceMonth,
+  ] = useState(
+    initialRule?.recurrence_month ??
+      Number(
+        initialStartMonth.slice(5, 7),
+      ),
   );
 
   const [
@@ -237,13 +279,9 @@ function FormFields({
                 return;
               }
 
-              setTransactionType(
-                value,
-              );
+              setTransactionType(value);
 
-              if (
-                value === "income"
-              ) {
+              if (value === "income") {
                 setPaymentMethod(
                   "account",
                 );
@@ -322,17 +360,135 @@ function FormFields({
           </select>
         </label>
 
+        <div className="sm:col-span-2 rounded-xl border border-[var(--border)] bg-gray-50 p-4">
+          <div
+            className={`grid gap-4 ${
+              recurrenceFrequency ===
+              "yearly"
+                ? "sm:grid-cols-3"
+                : "sm:grid-cols-2"
+            }`}
+          >
+            <label className="text-sm font-medium">
+              반복 주기
+              <select
+                name="recurrenceFrequency"
+                value={recurrenceFrequency}
+                onChange={(event) => {
+                  const value =
+                    event.currentTarget.value;
+
+                  if (
+                    value !== "monthly" &&
+                    value !== "yearly"
+                  ) {
+                    return;
+                  }
+
+                  setRecurrenceFrequency(
+                    value,
+                  );
+
+                  if (value === "yearly") {
+                    setRecurrenceMonth(
+                      Number(
+                        startMonth.slice(5, 7),
+                      ),
+                    );
+                  }
+                }}
+                className={inputClassName}
+              >
+                <option value="monthly">
+                  매월
+                </option>
+                <option value="yearly">
+                  매년
+                </option>
+              </select>
+            </label>
+
+            {recurrenceFrequency ===
+            "yearly" ? (
+              <label className="text-sm font-medium">
+                매년 반영 월
+                <select
+                  name="recurrenceMonth"
+                  value={recurrenceMonth}
+                  onChange={(event) => {
+                    setRecurrenceMonth(
+                      Number(
+                        event.currentTarget
+                          .value,
+                      ),
+                    );
+                  }}
+                  required
+                  className={inputClassName}
+                >
+                  {Array.from(
+                    { length: 12 },
+                    (_, index) =>
+                      index + 1,
+                  ).map((month) => (
+                    <option
+                      key={month}
+                      value={month}
+                    >
+                      {month}월
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {paymentMethod ===
+            "account" ? (
+              <label className="text-sm font-medium">
+                {recurrenceFrequency ===
+                "yearly"
+                  ? "매년 반영일"
+                  : "매월 반영일"}
+                <input
+                  name="paymentDay"
+                  type="number"
+                  min={1}
+                  max={31}
+                  step={1}
+                  defaultValue={
+                    initialRule
+                      ?.payment_day ?? 1
+                  }
+                  required
+                  className={inputClassName}
+                />
+                <span className="mt-1 block text-xs font-normal text-gray-500">
+                  없는 날짜는 해당 월의 마지막 날로 반영됩니다.
+                </span>
+              </label>
+            ) : recurrenceFrequency ===
+              "yearly" ? (
+              <div className="text-sm font-medium">
+                매년 반영일
+                <div className="mt-2 rounded-xl border border-[var(--border)] bg-white px-3 py-2.5 text-sm font-normal text-gray-500">
+                  선택한 카드의 결제일 사용
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
         <label className="text-sm font-medium">
           시작 월
           <input
             name="startMonth"
             type="month"
-            defaultValue={
-              initialRule?.start_month.slice(
-                0,
-                7,
-              ) ?? currentMonth
-            }
+            value={startMonth}
+            onChange={(event) => {
+              setStartMonth(
+                event.currentTarget.value,
+              );
+            }}
             required
             className={inputClassName}
           />
@@ -428,61 +584,39 @@ function FormFields({
 
         {paymentMethod ===
         "account" ? (
-          <>
-            <label className="text-sm font-medium">
-              {transactionType ===
-              "income"
-                ? "입금 계좌"
-                : "출금 계좌"}
-              <select
-                name="accountId"
-                defaultValue={
-                  initialRule?.account_id ??
-                  ""
-                }
-                required
-                className={inputClassName}
-              >
-                <option value="">
-                  선택
-                </option>
+          <label className="text-sm font-medium sm:col-span-2">
+            {transactionType ===
+            "income"
+              ? "입금 계좌"
+              : "출금 계좌"}
+            <select
+              name="accountId"
+              defaultValue={
+                initialRule?.account_id ??
+                ""
+              }
+              required
+              className={inputClassName}
+            >
+              <option value="">
+                선택
+              </option>
 
-                {visibleAccounts.map(
-                  (account) => (
-                    <option
-                      key={account.id}
-                      value={account.id}
-                    >
-                      {account.name}
-                      {account.is_active
-                        ? ""
-                        : " · 비활성"}
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
-
-            <label className="text-sm font-medium">
-              매월 반영일
-              <input
-                name="paymentDay"
-                type="number"
-                min={1}
-                max={31}
-                step={1}
-                defaultValue={
-                  initialRule
-                    ?.payment_day ?? 1
-                }
-                required
-                className={inputClassName}
-              />
-              <span className="mt-1 block text-xs font-normal text-gray-500">
-                없는 날짜는 해당 월의 마지막 날로 반영됩니다.
-              </span>
-            </label>
-          </>
+              {visibleAccounts.map(
+                (account) => (
+                  <option
+                    key={account.id}
+                    value={account.id}
+                  >
+                    {account.name}
+                    {account.is_active
+                      ? ""
+                      : " · 비활성"}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
         ) : (
           <label className="text-sm font-medium sm:col-span-2">
             결제 카드
@@ -504,7 +638,7 @@ function FormFields({
                     key={card.id}
                     value={card.id}
                   >
-                    {card.name} · 매월{" "}
+                    {card.name} · 결제일{" "}
                     {card.payment_day}일
                     {card.is_active
                       ? ""
@@ -515,7 +649,10 @@ function FormFields({
             </select>
 
             <span className="mt-1 block text-xs font-normal text-gray-500">
-              카드 설정의 결제일과 결제 계좌가 자동 적용됩니다.
+              {recurrenceFrequency ===
+              "yearly"
+                ? "선택한 연간 반영 월에 카드 설정의 결제일과 결제 계좌가 적용됩니다."
+                : "카드 설정의 결제일과 결제 계좌가 자동 적용됩니다."}
             </span>
           </label>
         )}
@@ -802,6 +939,8 @@ function RuleRow({
             0,
             7,
           ) ?? null,
+          rule.recurrence_frequency,
+          rule.recurrence_month,
         )
       : null;
 
@@ -814,10 +953,13 @@ function RuleRow({
           ? `${progress.current}회차`
           : `${progress.current}/${progress.total}회차`;
 
+  const recurrenceLabel =
+    frequencyText(rule);
+
   const connectionText = card
-    ? `${card.name} · ${card.payment_day}일`
+    ? `${card.name} · ${recurrenceLabel} ${card.payment_day}일`
     : account
-      ? `${account.name} · ${rule.payment_day}일`
+      ? `${account.name} · ${recurrenceLabel} ${rule.payment_day}일`
       : "연결 확인 필요";
 
   return (
@@ -847,6 +989,10 @@ function RuleRow({
               "income"
                 ? "수입"
                 : "지출"}
+            </Badge>
+
+            <Badge>
+              {recurrenceLabel}
             </Badge>
 
             <Badge>
@@ -1065,7 +1211,7 @@ export function RecurringManager({
               아직 등록된 정기 항목이 없습니다.
             </p>
             <p className="mt-1 text-xs text-gray-400">
-              정기 수입·정기 지출·할부를 같은 방식으로 등록할 수 있습니다.
+              정기 수입·정기 지출·할부를 매월 또는 매년 반복하도록 등록할 수 있습니다.
             </p>
           </div>
         ) : (

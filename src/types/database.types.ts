@@ -471,6 +471,8 @@ export type Database = {
           owner_type: Database["public"]["Enums"]["owner_type"]
           payment_day: number
           rate_rule_id: string | null
+          recurrence_frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          recurrence_month: number | null
           show_occurrence_progress: boolean
           start_month: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
@@ -493,6 +495,8 @@ export type Database = {
           owner_type: Database["public"]["Enums"]["owner_type"]
           payment_day: number
           rate_rule_id?: string | null
+          recurrence_frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          recurrence_month?: number | null
           show_occurrence_progress?: boolean
           start_month: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
@@ -515,6 +519,8 @@ export type Database = {
           owner_type?: Database["public"]["Enums"]["owner_type"]
           payment_day?: number
           rate_rule_id?: string | null
+          recurrence_frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          recurrence_month?: number | null
           show_occurrence_progress?: boolean
           start_month?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
@@ -766,6 +772,7 @@ export type Database = {
       fund_purpose: "living" | "investment"
       income_summary_group: "earned" | "asset" | "variable"
       owner_type: "wife" | "husband" | "joint"
+      recurrence_frequency: "monthly" | "yearly"
       transaction_status: "planned" | "confirmed" | "cancelled"
       transaction_type: "income" | "expense" | "transfer"
     }
@@ -905,6 +912,7 @@ export const Constants = {
       fund_purpose: ["living", "investment"],
       income_summary_group: ["earned", "asset", "variable"],
       owner_type: ["wife", "husband", "joint"],
+      recurrence_frequency: ["monthly", "yearly"],
       transaction_status: ["planned", "confirmed", "cancelled"],
       transaction_type: ["income", "expense", "transfer"],
     },

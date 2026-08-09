@@ -177,13 +177,13 @@ export default async function RecurringPage() {
         </h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          정기 수입·정기 지출·할부를 하나의 규칙으로 관리합니다. 종료 월이 없으면 계속 생성됩니다.
+          정기 수입·정기 지출·할부를 하나의 규칙으로 관리합니다. 매월 또는 매년 반복할 수 있고 종료 월이 없으면 계속 생성됩니다.
         </p>
       </div>
 
       <Card title="자동 생성 규칙">
         <p className="mt-2 text-sm text-gray-500">
-          이번 달에 해당하는 활성 규칙은 같은 규칙·같은 월 기준으로 한 번만 예정 거래를 생성합니다.
+          선택한 월에 해당하는 활성 규칙만 같은 규칙·같은 월 기준으로 한 번씩 예정 거래를 생성합니다.
         </p>
 
         <RecurringManager
