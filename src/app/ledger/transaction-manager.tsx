@@ -970,12 +970,10 @@ function TransactionEditForm({
 }
 
 
-type ExpenseSummaryGroup = NonNullable<
-  Category["expense_summary_group"]
->;
-type IncomeSummaryGroup = NonNullable<
-  Category["income_summary_group"]
->;
+type ExpenseSummaryGroup =
+  Database["public"]["Enums"]["expense_summary_group"];
+type IncomeSummaryGroup =
+  Database["public"]["Enums"]["income_summary_group"];
 
 const expenseSummaryGroupLabels: Record<
   ExpenseSummaryGroup,
@@ -1041,11 +1039,15 @@ function TransactionItem({
 
   const expenseSummaryGroup =
     tone === "expense"
-      ? category?.expense_summary_group ?? null
+      ? transaction.expense_summary_group_snapshot ??
+        category?.expense_summary_group ??
+        null
       : null;
   const incomeSummaryGroup =
     tone === "income"
-      ? category?.income_summary_group ?? null
+      ? transaction.income_summary_group_snapshot ??
+        category?.income_summary_group ??
+        null
       : null;
 
   const summaryGroupLabel =
@@ -1508,8 +1510,11 @@ export function TransactionManager(props: Props) {
         return true;
       }
 
-      return !categoryMap.get(transaction.category_id)
-        ?.expense_summary_group;
+      return !(
+        transaction.expense_summary_group_snapshot ??
+        categoryMap.get(transaction.category_id)
+          ?.expense_summary_group
+      );
     },
   );
 
@@ -1523,8 +1528,11 @@ export function TransactionManager(props: Props) {
         return true;
       }
 
-      return !categoryMap.get(transaction.category_id)
-        ?.income_summary_group;
+      return !(
+        transaction.income_summary_group_snapshot ??
+        categoryMap.get(transaction.category_id)
+          ?.income_summary_group
+      );
     },
   );
 

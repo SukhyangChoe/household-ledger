@@ -570,9 +570,15 @@ export type Database = {
           effective_date: string
           effective_month: string | null
           expense_nature: Database["public"]["Enums"]["expense_nature"] | null
+          expense_summary_group_snapshot:
+            | Database["public"]["Enums"]["expense_summary_group"]
+            | null
           fund_purpose: Database["public"]["Enums"]["fund_purpose"] | null
           household_id: string
           id: string
+          income_summary_group_snapshot:
+            | Database["public"]["Enums"]["income_summary_group"]
+            | null
           is_asset_income_snapshot: boolean | null
           living_allocated_amount: number | null
           memo: string | null
@@ -595,9 +601,15 @@ export type Database = {
           effective_date: string
           effective_month?: string | null
           expense_nature?: Database["public"]["Enums"]["expense_nature"] | null
+          expense_summary_group_snapshot?:
+            | Database["public"]["Enums"]["expense_summary_group"]
+            | null
           fund_purpose?: Database["public"]["Enums"]["fund_purpose"] | null
           household_id: string
           id?: string
+          income_summary_group_snapshot?:
+            | Database["public"]["Enums"]["income_summary_group"]
+            | null
           is_asset_income_snapshot?: boolean | null
           living_allocated_amount?: number | null
           memo?: string | null
@@ -620,9 +632,15 @@ export type Database = {
           effective_date?: string
           effective_month?: string | null
           expense_nature?: Database["public"]["Enums"]["expense_nature"] | null
+          expense_summary_group_snapshot?:
+            | Database["public"]["Enums"]["expense_summary_group"]
+            | null
           fund_purpose?: Database["public"]["Enums"]["fund_purpose"] | null
           household_id?: string
           id?: string
+          income_summary_group_snapshot?:
+            | Database["public"]["Enums"]["income_summary_group"]
+            | null
           is_asset_income_snapshot?: boolean | null
           living_allocated_amount?: number | null
           memo?: string | null
