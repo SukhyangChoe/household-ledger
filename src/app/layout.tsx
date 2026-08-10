@@ -17,6 +17,7 @@ const mainNav = [
   ["/reconciliation", "잔액 대조"],
   ["/recurring", "정기 항목"],
   ["/monthly-close", "월 마감"],
+  ["/monthly-summary", "월별 정리"],
 ] as const;
 
 const settingsNav = [
@@ -32,6 +33,7 @@ const mobileNav = [
   ["/reconciliation", "대조"],
   ["/recurring", "정기"],
   ["/monthly-close", "마감"],
+  ["/monthly-summary", "정리"],
   ["/settings", "설정"],
 ] as const;
 
@@ -107,12 +109,12 @@ export default function RootLayout({
           </div>
         </div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t border-[var(--border)] bg-white lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-[var(--border)] bg-white lg:hidden">
           {mobileNav.map(([href, label]) => (
             <Link
               key={href}
               href={href}
-              className="px-1 py-3 text-center text-[10px] font-medium"
+              className="min-w-14 flex-1 px-2 py-3 text-center text-[10px] font-medium"
             >
               {label}
             </Link>
