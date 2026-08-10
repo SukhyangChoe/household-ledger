@@ -38,6 +38,7 @@ type Props = {
   transactions: Transaction[];
   defaultEffectiveDate: string;
   month: string;
+  isClosed: boolean;
 };
 
 type TransactionLookupProps = Pick<
@@ -1011,6 +1012,7 @@ function TransactionItem({
   transaction,
   tone,
   showUnclassified,
+  readOnly,
   accounts,
   cards,
   categories,
@@ -1019,6 +1021,7 @@ function TransactionItem({
   transaction: Transaction;
   tone: "expense" | "income";
   showUnclassified: boolean;
+  readOnly: boolean;
 } & TransactionLookupProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
@@ -1060,17 +1063,20 @@ function TransactionItem({
         : "미분류";
 
   const editable =
+    !readOnly &&
     !transaction.settlement_completed_at &&
     (transaction.status === "planned" ||
       transaction.status === "confirmed") &&
     transaction.transaction_type !== "transfer";
 
   const canChangeStatus =
+    !readOnly &&
     (transaction.status === "planned" ||
       transaction.status === "confirmed") &&
     !transaction.settlement_completed_at;
 
   const canDelete =
+    !readOnly &&
     transaction.status === "planned" &&
     !transaction.recurring_rule_id &&
     !transaction.settlement_completed_at;
@@ -1360,6 +1366,7 @@ function TransactionColumn({
   tone,
   transactions,
   showUnclassified,
+  readOnly,
   accounts,
   cards,
   categories,
@@ -1369,6 +1376,7 @@ function TransactionColumn({
   tone: "expense" | "income";
   transactions: Transaction[];
   showUnclassified: boolean;
+  readOnly: boolean;
 } & TransactionLookupProps) {
   const empty = transactions.length === 0;
 
@@ -1397,6 +1405,7 @@ function TransactionColumn({
               transaction={transaction}
               tone={tone}
               showUnclassified={showUnclassified}
+              readOnly={readOnly}
               accounts={accounts}
               cards={cards}
               categories={categories}
@@ -1548,13 +1557,19 @@ export function TransactionManager(props: Props) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="self-start rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm sm:self-auto"
-        >
-          + 새 거래 등록
-        </button>
+        {props.isClosed ? (
+          <span className="self-start rounded-xl border border-[var(--border)] bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-500 sm:self-auto">
+            마감된 월 · 거래 잠김
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="self-start rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm sm:self-auto"
+          >
+            + 새 거래 등록
+          </button>
+        )}
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
@@ -1621,6 +1636,7 @@ export function TransactionManager(props: Props) {
                 tone="expense"
                 transactions={expenseTransactions}
                 showUnclassified={showExpenseUnclassified}
+                readOnly={props.isClosed}
                 accounts={props.accounts}
                 cards={props.cards}
                 categories={props.categories}
@@ -1632,6 +1648,7 @@ export function TransactionManager(props: Props) {
                 tone="income"
                 transactions={incomeTransactions}
                 showUnclassified={showIncomeUnclassified}
+                readOnly={props.isClosed}
                 accounts={props.accounts}
                 cards={props.cards}
                 categories={props.categories}
@@ -1642,7 +1659,7 @@ export function TransactionManager(props: Props) {
         })}
       </div>
 
-      {createOpen ? (
+      {!props.isClosed && createOpen ? (
         <CreateTransactionDialog
           accounts={props.accounts}
           cards={props.cards}

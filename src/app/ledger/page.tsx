@@ -65,6 +65,17 @@ function won(value: number) {
   return `${value.toLocaleString("ko-KR")}원`;
 }
 
+function formatClosedAt(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 type LedgerPageProps = {
   searchParams: Promise<{
     month?: string;
@@ -87,23 +98,45 @@ export default async function LedgerPage({
   const { supabase, householdId } =
     await requireCurrentHousehold();
 
-  const { error: generationError } = await supabase.rpc(
-    "generate_recurring_transactions",
-    {
-      p_household_id: householdId,
-      p_target_month: startDate,
-    },
-  );
+  const {
+    data: closedSnapshot,
+    error: closedSnapshotError,
+  } = await supabase
+    .from("monthly_snapshots")
+    .select("closed_at")
+    .eq("household_id", householdId)
+    .eq("snapshot_month", startDate)
+    .maybeSingle();
 
-  if (generationError) {
+  if (closedSnapshotError) {
     console.error(
-      "Failed to generate recurring transactions:",
-      generationError,
+      "Failed to load ledger close status:",
+      closedSnapshotError.message,
+    );
+    throw new Error("월 마감 상태를 확인하지 못했습니다.");
+  }
+
+  const isClosed = closedSnapshot !== null;
+
+  if (!isClosed) {
+    const { error: generationError } = await supabase.rpc(
+      "generate_recurring_transactions",
+      {
+        p_household_id: householdId,
+        p_target_month: startDate,
+      },
     );
 
-    throw new Error(
-      "선택한 달의 정기 거래를 생성하지 못했습니다.",
-    );
+    if (generationError) {
+      console.error(
+        "Failed to generate recurring transactions:",
+        generationError,
+      );
+
+      throw new Error(
+        "선택한 달의 정기 거래를 생성하지 못했습니다.",
+      );
+    }
   }
 
   const [
@@ -245,7 +278,16 @@ export default async function LedgerPage({
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">월별 가계부</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-2xl font-bold">월별 가계부</h2>
+
+            {isClosed ? (
+              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                마감 완료
+              </span>
+            ) : null}
+          </div>
+
           <p className="mt-1 text-sm text-gray-500">
             카드 사용일이 아닌 실제 결제일 기준입니다.
           </p>
@@ -275,6 +317,29 @@ export default async function LedgerPage({
         </nav>
       </div>
 
+      {closedSnapshot ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-emerald-900">
+              이 월은 마감되어 거래가 잠겨 있습니다.
+            </p>
+            <p className="mt-1 text-xs leading-5 text-emerald-800">
+              {formatClosedAt(closedSnapshot.closed_at)} 마감 ·
+              거래 등록, 수정, 상태 변경, 삭제는 마감 취소 전까지
+              사용할 수 없습니다. 아직 필요한 생활비 정산은 정산
+              화면에서 계속 처리할 수 있습니다.
+            </p>
+          </div>
+
+          <Link
+            href={`/monthly-close?month=${month}`}
+            className="shrink-0 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-emerald-900"
+          >
+            마감 상세
+          </Link>
+        </div>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card title="확정 수입" value={won(confirmedIncome)} />
         <Card title="생활비 지출" value={won(livingExpense)} />
@@ -298,6 +363,7 @@ export default async function LedgerPage({
             transactions={transactions}
             defaultEffectiveDate={defaultEffectiveDate}
             month={month}
+            isClosed={isClosed}
           />
         </div>
       </Card>
