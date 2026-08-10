@@ -624,6 +624,13 @@ export default async function DashboardPage() {
                 잔액 대조 화면에서
                 관리합니다.
               </p>
+
+              <Link
+                href="/reconciliation"
+                className="mt-4 flex w-full items-center justify-center rounded-xl border border-[var(--border)] px-4 py-3 text-sm font-semibold"
+              >
+                잔액 대조로 이동
+              </Link>
             </>
           ) : (
             <>

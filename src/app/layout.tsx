@@ -14,6 +14,7 @@ const mainNav = [
   ["/", "홈"],
   ["/ledger", "월별 가계부"],
   ["/settlements", "생활비 정산"],
+  ["/reconciliation", "잔액 대조"],
   ["/recurring", "정기 항목"],
 ] as const;
 
@@ -85,9 +86,11 @@ export default function RootLayout({
             <header className="sticky top-0 z-10 flex h-16 items-center border-b border-[var(--border)] bg-[rgba(247,246,242,0.92)] px-5 backdrop-blur lg:px-8">
               <div>
                 <p className="text-xs text-gray-500">
-                  결제일 기준 · 데모 모드
+                  결제일 기준 · 실제 데이터
                 </p>
-                <p className="font-semibold">2026년 7월</p>
+                <p className="font-semibold">
+                  생활비 계좌 중심 가계부
+                </p>
               </div>
             </header>
 
@@ -98,7 +101,7 @@ export default function RootLayout({
           </div>
         </div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-[var(--border)] bg-white lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-[var(--border)] bg-white lg:hidden">
           {mobileNav.map(([href, label]) => (
             <Link
               key={href}
