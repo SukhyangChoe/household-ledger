@@ -50,9 +50,24 @@ export default async function OnboardingPage() {
         </h1>
 
         <p className="mt-4 text-sm leading-6 text-slate-500">
-          가계를 만든 뒤 생활비 계좌, 카드, 생활비
-          반영률과 카테고리를 등록하게 됩니다.
+          먼저 가계 이름을 만든 뒤,
+          설정 시작 화면에서 계좌와
+          생활비 계좌 → 생활비 반영률
+          → 수입·지출 카테고리 순서로
+          준비할 수 있습니다.
         </p>
+
+        <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold text-slate-600">
+          <div className="rounded-xl bg-slate-50 px-2 py-3">
+            1. 계좌
+          </div>
+          <div className="rounded-xl bg-slate-50 px-2 py-3">
+            2. 반영률
+          </div>
+          <div className="rounded-xl bg-slate-50 px-2 py-3">
+            3. 카테고리
+          </div>
+        </div>
 
         <OnboardingForm />
       </section>

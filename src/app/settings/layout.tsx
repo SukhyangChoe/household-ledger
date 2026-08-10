@@ -2,14 +2,19 @@ import Link from "next/link";
 
 const settingsNav = [
   {
-    href: "/settings/rates",
-    label: "생활비 반영률",
-    description: "수입별 생활비 배정 비율과 이력",
+    href: "/settings",
+    label: "설정 시작",
+    description: "기본 준비 상태와 다음 설정 확인",
   },
   {
     href: "/settings/accounts",
     label: "카드 · 계좌",
     description: "계좌와 카드 결제 정보",
+  },
+  {
+    href: "/settings/rates",
+    label: "생활비 반영률",
+    description: "수입별 생활비 배정 비율과 이력",
   },
   {
     href: "/settings/categories",
@@ -31,11 +36,13 @@ export default function SettingsLayout({
         </h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          필요한 설정 영역을 선택해서 관리할 수 있습니다.
+          처음이라면 설정 시작에서
+          준비 상태를 확인하고
+          순서대로 진행하세요.
         </p>
       </div>
 
-      <nav className="grid gap-3 md:grid-cols-3">
+      <nav className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {settingsNav.map((item) => (
           <Link
             key={item.href}
