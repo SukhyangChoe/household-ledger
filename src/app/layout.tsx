@@ -16,6 +16,7 @@ const mainNav = [
   ["/settlements", "생활비 정산"],
   ["/reconciliation", "잔액 대조"],
   ["/recurring", "정기 항목"],
+  ["/monthly-close", "월 마감"],
 ] as const;
 
 const settingsNav = [
@@ -25,7 +26,12 @@ const settingsNav = [
 ] as const;
 
 const mobileNav = [
-  ...mainNav,
+  ["/", "홈"],
+  ["/ledger", "가계부"],
+  ["/settlements", "정산"],
+  ["/reconciliation", "대조"],
+  ["/recurring", "정기"],
+  ["/monthly-close", "마감"],
   ["/settings", "설정"],
 ] as const;
 
@@ -101,14 +107,14 @@ export default function RootLayout({
           </div>
         </div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-[var(--border)] bg-white lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t border-[var(--border)] bg-white lg:hidden">
           {mobileNav.map(([href, label]) => (
             <Link
               key={href}
               href={href}
-              className="px-1 py-3 text-center text-[11px] font-medium"
+              className="px-1 py-3 text-center text-[10px] font-medium"
             >
-              {label.replace("월별 ", "")}
+              {label}
             </Link>
           ))}
         </nav>
