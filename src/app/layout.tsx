@@ -15,9 +15,14 @@ const mainNav = [
   ["/ledger", "월별 가계부"],
   ["/settlements", "생활비 정산"],
   ["/reconciliation", "잔액 대조"],
-  ["/recurring", "정기 항목"],
+  ["/recurring", "정기결제"],
   ["/monthly-close", "월 마감"],
   ["/monthly-summary", "월별 정리"],
+] as const;
+
+const recurringSubNav = [
+  ["/recurring/general", "일반 정기 결제"],
+  ["/recurring/cards", "카드 정기 결제"],
 ] as const;
 
 const settingsNav = [
@@ -58,13 +63,28 @@ export default function RootLayout({
 
             <nav className="space-y-1">
               {mainNav.map(([href, label]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="block rounded-xl px-3 py-3 text-sm font-medium hover:bg-[var(--surface-soft)]"
-                >
-                  {label}
-                </Link>
+                <div key={href}>
+                  <Link
+                    href={href}
+                    className="block rounded-xl px-3 py-3 text-sm font-medium hover:bg-[var(--surface-soft)]"
+                  >
+                    {label}
+                  </Link>
+
+                  {href === "/recurring" ? (
+                    <div className="ml-3 space-y-1 border-l border-[var(--border)] pl-3">
+                      {recurringSubNav.map(([subHref, subLabel]) => (
+                        <Link
+                          key={subHref}
+                          href={subHref}
+                          className="block rounded-lg px-3 py-2 text-xs font-medium text-gray-600 hover:bg-[var(--surface-soft)] hover:text-gray-900"
+                        >
+                          {subLabel}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               ))}
 
               <div className="pt-1">

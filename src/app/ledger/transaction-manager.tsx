@@ -15,6 +15,7 @@ import {
   updateTransaction,
   type TransactionActionState,
 } from "@/app/ledger/actions";
+import { groupCardTransactions } from "@/domain/ledger-card-grouping";
 import type { Database } from "@/types/database.types";
 
 type Account =
@@ -134,6 +135,10 @@ function TransactionFields({
     useState("");
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>("account");
+  const [selectedCardId, setSelectedCardId] =
+    useState("");
+  const [effectiveDate, setEffectiveDate] =
+    useState(defaultEffectiveDate);
   const [fundPurpose, setFundPurpose] =
     useState("living");
   const [expenseNature, setExpenseNature] =
@@ -160,6 +165,30 @@ function TransactionFields({
     (rateRule) =>
       rateRule.is_active && rateRule.valid_to === null,
   );
+
+  function cardPaymentDate(
+    cardId: string,
+  ) {
+    const card = cards.find(
+      (item) => item.id === cardId,
+    );
+
+    if (!card) {
+      return defaultEffectiveDate;
+    }
+
+    const month =
+      defaultEffectiveDate.slice(0, 7);
+    const paymentDay = Math.min(
+      card.payment_day,
+      getDaysInMonth(month),
+    );
+
+    return buildDate(
+      month,
+      paymentDay,
+    );
+  }
 
   function changeCategory(categoryId: string) {
     setSelectedCategoryId(categoryId);
@@ -202,6 +231,10 @@ function TransactionFields({
     setSelectedAccountId("");
     setSelectedRateRuleId("");
     setPaymentMethod("account");
+    setSelectedCardId("");
+    setEffectiveDate(
+      defaultEffectiveDate,
+    );
     setFundPurpose("living");
     setExpenseNature("variable");
     setOwnerType("wife");
@@ -241,10 +274,26 @@ function TransactionFields({
           <input
             name="effectiveDate"
             type="date"
-            defaultValue={defaultEffectiveDate}
+            value={effectiveDate}
+            onChange={(event) => {
+              setEffectiveDate(
+                event.target.value,
+              );
+            }}
+            readOnly={
+              transactionType === "expense" &&
+              paymentMethod === "card" &&
+              selectedCardId !== ""
+            }
             required
             className={inputClassName}
           />
+          {transactionType === "expense" &&
+          paymentMethod === "card" ? (
+            <span className="mt-1 block text-xs font-normal text-gray-500">
+              카드를 선택하면 해당 카드의 결제일로 자동 맞춰집니다.
+            </span>
+          ) : null}
         </label>
 
         <label className="text-sm font-medium">
@@ -386,9 +435,22 @@ function TransactionFields({
                 name="paymentMethod"
                 value={paymentMethod}
                 onChange={(event) => {
+                  const nextMethod =
+                    event.target.value as PaymentMethod;
                   setPaymentMethod(
-                    event.target.value as PaymentMethod,
+                    nextMethod,
                   );
+
+                  if (
+                    nextMethod === "card" &&
+                    selectedCardId
+                  ) {
+                    setEffectiveDate(
+                      cardPaymentDate(
+                        selectedCardId,
+                      ),
+                    );
+                  }
                 }}
                 className={inputClassName}
               >
@@ -418,6 +480,22 @@ function TransactionFields({
                 결제 카드
                 <select
                   name="cardId"
+                  value={selectedCardId}
+                  onChange={(event) => {
+                    const cardId =
+                      event.target.value;
+                    setSelectedCardId(
+                      cardId,
+                    );
+
+                    if (cardId) {
+                      setEffectiveDate(
+                        cardPaymentDate(
+                          cardId,
+                        ),
+                      );
+                    }
+                  }}
                   required
                   className={inputClassName}
                 >
@@ -1008,11 +1086,35 @@ const incomeSummaryGroups: IncomeSummaryGroup[] = [
   "variable",
 ];
 
+function getExpenseSummaryGroup(
+  transaction: Transaction,
+  categories: Category[],
+): ExpenseSummaryGroup | null {
+  if (
+    transaction.transaction_type !== "expense" &&
+    transaction.transaction_type !== "transfer"
+  ) {
+    return null;
+  }
+
+  const category = categories.find(
+    (item) =>
+      item.id === transaction.category_id,
+  );
+
+  return (
+    transaction.expense_summary_group_snapshot ??
+    category?.expense_summary_group ??
+    null
+  );
+}
+
 function TransactionItem({
   transaction,
   tone,
   showUnclassified,
   readOnly,
+  nestedDetail = false,
   accounts,
   cards,
   categories,
@@ -1022,6 +1124,7 @@ function TransactionItem({
   tone: "expense" | "income";
   showUnclassified: boolean;
   readOnly: boolean;
+  nestedDetail?: boolean;
 } & TransactionLookupProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
@@ -1094,8 +1197,20 @@ function TransactionItem({
         : "md:grid-cols-[minmax(140px,1.55fr)_repeat(3,minmax(86px,1fr))]";
 
   const nameCell = (
-    <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5">
-      <span className="truncate text-xs font-medium text-gray-800 sm:text-sm">
+    <div
+      className={
+        nestedDetail
+          ? "flex min-w-0 items-center gap-1.5 py-1.5 pl-5 pr-2"
+          : "flex min-w-0 items-center gap-1.5 px-2 py-1.5"
+      }
+    >
+      <span
+        className={
+          nestedDetail
+            ? "truncate text-[11px] font-medium text-gray-600 sm:text-xs"
+            : "truncate text-xs font-medium text-gray-800 sm:text-sm"
+        }
+      >
         {transaction.name}
       </span>
 
@@ -1127,7 +1242,13 @@ function TransactionItem({
 
   const desktopSummary = (
     <div
-      className={`hidden md:grid ${desktopGridClass}`}
+      className={[
+        "hidden md:grid",
+        desktopGridClass,
+        nestedDetail ? "bg-slate-50/70" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {nameCell}
 
@@ -1177,9 +1298,21 @@ function TransactionItem({
   );
 
   const mobileSummary = (
-    <div className="flex min-w-0 items-center gap-2 px-2 py-1.5 md:hidden">
+    <div
+      className={
+        nestedDetail
+          ? "flex min-w-0 items-center gap-2 bg-slate-50/70 py-1.5 pl-5 pr-2 md:hidden"
+          : "flex min-w-0 items-center gap-2 px-2 py-1.5 md:hidden"
+      }
+    >
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="truncate text-xs font-medium text-gray-800 sm:text-sm">
+        <span
+          className={
+            nestedDetail
+              ? "truncate text-[11px] font-medium text-gray-600 sm:text-xs"
+              : "truncate text-xs font-medium text-gray-800 sm:text-sm"
+          }
+        >
           {transaction.name}
         </span>
 
@@ -1361,6 +1494,171 @@ function TransactionItem({
   );
 }
 
+function CardTransactionGroup({
+  cardId,
+  transactions,
+  showUnclassified,
+  readOnly,
+  accounts,
+  cards,
+  categories,
+  rateRules,
+}: {
+  cardId: string;
+  transactions: Transaction[];
+  showUnclassified: boolean;
+  readOnly: boolean;
+} & TransactionLookupProps) {
+  const card = cards.find(
+    (item) => item.id === cardId,
+  );
+
+  const [group] =
+    groupCardTransactions(
+      transactions.map(
+        (transaction) => ({
+          id: transaction.id,
+          cardId,
+          amount:
+            transaction.amount,
+          status:
+            transaction.status ===
+            "planned"
+              ? "planned"
+              : "confirmed",
+          expenseSummaryGroup:
+            getExpenseSummaryGroup(
+              transaction,
+              categories,
+            ),
+        }),
+      ),
+    );
+
+  if (!group) {
+    return null;
+  }
+
+  const desktopGridClass =
+    showUnclassified
+      ? "md:grid-cols-[minmax(140px,1.55fr)_repeat(5,minmax(72px,1fr))]"
+      : "md:grid-cols-[minmax(140px,1.55fr)_repeat(4,minmax(78px,1fr))]";
+
+  const name =
+    card?.name ?? "카드";
+
+  return (
+    <details className="group border-b border-black/5 last:border-b-0">
+      <summary className="cursor-pointer list-none transition hover:bg-black/[0.025] [&::-webkit-details-marker]:hidden">
+        <div
+          className={`hidden md:grid ${desktopGridClass}`}
+        >
+          <div className="flex min-w-0 items-center gap-2 px-2 py-2">
+            <span className="min-w-0 flex-1 break-words text-xs font-semibold leading-5 text-gray-800 sm:text-sm">
+              {name}
+            </span>
+
+            <span className="shrink-0 text-[10px] font-medium text-gray-400 group-open:text-gray-700">
+              상세
+            </span>
+          </div>
+
+          {expenseSummaryGroups.map(
+            (summaryGroup) => {
+              const amount =
+                group
+                  .amountsBySummaryGroup[
+                  summaryGroup
+                ];
+
+              return (
+                <div
+                  key={
+                    summaryGroup
+                  }
+                  className="flex items-center justify-end border-l border-black/5 px-2 py-1.5"
+                >
+                  {amount > 0 ? (
+                    <span className="text-xs font-semibold tabular-nums text-gray-900 sm:text-sm">
+                      {won(amount)}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            },
+          )}
+
+          {showUnclassified ? (
+            <div className="flex items-center justify-end border-l border-black/5 px-2 py-1.5">
+              {group.unclassifiedAmount >
+              0 ? (
+                <span className="text-xs font-semibold tabular-nums text-gray-900 sm:text-sm">
+                  {won(
+                    group.unclassifiedAmount,
+                  )}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex min-w-0 items-center gap-2 px-2 py-2 md:hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span className="whitespace-normal break-words text-xs font-semibold leading-5 text-gray-800 sm:text-sm">
+              {name}
+            </span>
+          </div>
+
+          <span className="shrink-0 text-xs font-bold tabular-nums text-gray-900 sm:text-sm">
+            {won(
+              group.totalAmount,
+            )}
+          </span>
+
+          <span className="shrink-0 text-[10px] font-medium text-gray-400 group-open:text-gray-700">
+            상세
+          </span>
+        </div>
+      </summary>
+
+      <div className="border-t border-black/5 bg-slate-50/40">
+        <div>
+          {transactions.map(
+            (transaction) => (
+              <TransactionItem
+                key={
+                  transaction.id
+                }
+                transaction={
+                  transaction
+                }
+                tone="expense"
+                showUnclassified={
+                  showUnclassified
+                }
+                readOnly={
+                  readOnly
+                }
+                nestedDetail
+                accounts={
+                  accounts
+                }
+                cards={cards}
+                categories={
+                  categories
+                }
+                rateRules={
+                  rateRules
+                }
+              />
+            ),
+          )}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function TransactionColumn({
   title,
   tone,
@@ -1379,6 +1677,38 @@ function TransactionColumn({
   readOnly: boolean;
 } & TransactionLookupProps) {
   const empty = transactions.length === 0;
+
+  const cardTransactions =
+    tone === "expense"
+      ? transactions.filter(
+          (transaction) =>
+            transaction.card_id !== null,
+        )
+      : [];
+
+  const directTransactions =
+    tone === "expense"
+      ? transactions.filter(
+          (transaction) =>
+            transaction.card_id === null,
+        )
+      : transactions;
+
+  const cardIds = [
+    ...new Set(
+      cardTransactions
+        .map(
+          (transaction) =>
+            transaction.card_id,
+        )
+        .filter(
+          (
+            cardId,
+          ): cardId is string =>
+            cardId !== null,
+        ),
+    ),
+  ];
 
   return (
     <div
@@ -1399,19 +1729,69 @@ function TransactionColumn({
 
       {!empty ? (
         <div>
-          {transactions.map((transaction) => (
-            <TransactionItem
-              key={transaction.id}
-              transaction={transaction}
-              tone={tone}
-              showUnclassified={showUnclassified}
-              readOnly={readOnly}
-              accounts={accounts}
-              cards={cards}
-              categories={categories}
-              rateRules={rateRules}
-            />
-          ))}
+          {directTransactions.map(
+            (transaction) => (
+              <TransactionItem
+                key={
+                  transaction.id
+                }
+                transaction={
+                  transaction
+                }
+                tone={tone}
+                showUnclassified={
+                  showUnclassified
+                }
+                readOnly={readOnly}
+                accounts={accounts}
+                cards={cards}
+                categories={
+                  categories
+                }
+                rateRules={
+                  rateRules
+                }
+              />
+            ),
+          )}
+
+          {tone === "expense"
+            ? cardIds.map(
+                (cardId) => (
+                  <CardTransactionGroup
+                    key={cardId}
+                    cardId={
+                      cardId
+                    }
+                    transactions={cardTransactions.filter(
+                      (
+                        transaction,
+                      ) =>
+                        transaction.card_id ===
+                        cardId,
+                    )}
+                    showUnclassified={
+                      showUnclassified
+                    }
+                    readOnly={
+                      readOnly
+                    }
+                    accounts={
+                      accounts
+                    }
+                    cards={
+                      cards
+                    }
+                    categories={
+                      categories
+                    }
+                    rateRules={
+                      rateRules
+                    }
+                  />
+                ),
+              )
+            : null}
         </div>
       ) : null}
     </div>

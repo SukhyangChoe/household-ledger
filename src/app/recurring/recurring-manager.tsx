@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   createRecurringRule,
@@ -38,8 +39,12 @@ type PaymentMethod =
 type RecurrenceFrequency =
   | "monthly"
   | "yearly";
+type RecurringPageMode =
+  | "general"
+  | "card";
 
 type Props = {
+  mode: RecurringPageMode;
   rules: Rule[];
   accounts: Account[];
   cards: Card[];
@@ -49,6 +54,7 @@ type Props = {
 };
 
 type FormFieldsProps = {
+  mode: RecurringPageMode;
   accounts: Account[];
   cards: Card[];
   categories: Category[];
@@ -140,6 +146,7 @@ function ActionMessage({
 }
 
 function FormFields({
+  mode,
   accounts,
   cards,
   categories,
@@ -149,14 +156,16 @@ function FormFields({
 }: FormFieldsProps) {
   const initialTransactionType:
     RecurringTransactionType =
-      initialRule?.transaction_type ===
-      "income"
-        ? "income"
-        : "expense";
+      mode === "card"
+        ? "expense"
+        : initialRule?.transaction_type ===
+            "income"
+          ? "income"
+          : "expense";
 
   const initialPaymentMethod:
     PaymentMethod =
-      initialRule?.card_id
+      mode === "card"
         ? "card"
         : "account";
 
@@ -263,50 +272,63 @@ function FormFields({
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-medium">
-          유형
-          <select
-            name="transactionType"
-            value={transactionType}
-            onChange={(event) => {
-              const value =
-                event.currentTarget.value;
+        {mode === "card" ? (
+          <>
+            <input
+              type="hidden"
+              name="transactionType"
+              value="expense"
+            />
+            <div className="text-sm font-medium">
+              유형
+              <div className="mt-2 rounded-xl border border-[var(--border)] bg-gray-50 px-3 py-2.5 text-sm font-normal text-gray-600">
+                카드 지출
+              </div>
+            </div>
+          </>
+        ) : (
+          <label className="text-sm font-medium">
+            유형
+            <select
+              name="transactionType"
+              value={transactionType}
+              onChange={(event) => {
+                const value =
+                  event.currentTarget.value;
 
-              if (
-                value !== "income" &&
-                value !== "expense"
-              ) {
-                return;
-              }
+                if (
+                  value !== "income" &&
+                  value !== "expense"
+                ) {
+                  return;
+                }
 
-              setTransactionType(value);
-
-              if (value === "income") {
+                setTransactionType(value);
                 setPaymentMethod(
                   "account",
                 );
-              }
 
-              setCategoryId(
-                categories.find(
-                  (category) =>
-                    category.is_active &&
-                    category
-                      .transaction_type ===
-                      value,
-                )?.id ?? "",
-              );
-            }}
-            className={inputClassName}
-          >
-            <option value="expense">
-              지출
-            </option>
-            <option value="income">
-              수입
-            </option>
-          </select>
-        </label>
+                setCategoryId(
+                  categories.find(
+                    (category) =>
+                      category.is_active &&
+                      category
+                        .transaction_type ===
+                        value,
+                  )?.id ?? "",
+                );
+              }}
+              className={inputClassName}
+            >
+              <option value="expense">
+                지출
+              </option>
+              <option value="income">
+                수입
+              </option>
+            </select>
+          </label>
+        )}
 
         <label className="text-sm font-medium">
           항목명
@@ -545,42 +567,28 @@ function FormFields({
           </select>
         </label>
 
-        <label className="text-sm font-medium">
-          결제 방식
-          <select
+        <>
+          <input
+            type="hidden"
             name="paymentMethod"
-            value={paymentMethod}
-            onChange={(event) => {
-              const value =
-                event.currentTarget.value;
-
-              if (
-                value === "account" ||
-                (
-                  value === "card" &&
-                  transactionType ===
-                    "expense"
-                )
-              ) {
-                setPaymentMethod(
-                  value,
-                );
-              }
-            }}
-            className={inputClassName}
-          >
-            <option value="account">
-              계좌
-            </option>
-
-            {transactionType ===
-            "expense" ? (
-              <option value="card">
-                카드
-              </option>
-            ) : null}
-          </select>
-        </label>
+            value={
+              mode === "card"
+                ? "card"
+                : "account"
+            }
+          />
+          <div className="text-sm font-medium">
+            결제 방식
+            <div className="mt-2 rounded-xl border border-[var(--border)] bg-gray-50 px-3 py-2.5 text-sm font-normal text-gray-600">
+              {mode === "card"
+                ? "카드 결제"
+                : transactionType ===
+                    "income"
+                  ? "계좌 입금"
+                  : "계좌 직접 결제"}
+            </div>
+          </div>
+        </>
 
         {paymentMethod ===
         "account" ? (
@@ -774,12 +782,14 @@ function FormFields({
 }
 
 function CreateRuleForm({
+  mode,
   accounts,
   cards,
   categories,
   rateRules,
   currentMonth,
 }: Omit<Props, "rules">) {
+  const router = useRouter();
   const detailsRef =
     useRef<HTMLDetailsElement>(null);
   const formRef =
@@ -807,8 +817,9 @@ function CreateRuleForm({
       detailsRef.current?.removeAttribute(
         "open",
       );
+      router.refresh();
     }
-  }, [state]);
+  }, [state, router]);
 
   return (
     <>
@@ -817,7 +828,9 @@ function CreateRuleForm({
         className="mt-4 rounded-2xl border border-[var(--border)] bg-gray-50"
       >
         <summary className="cursor-pointer px-4 py-4 font-semibold">
-          새 정기 항목 등록
+          {mode === "card"
+            ? "새 카드 정기 결제 등록"
+            : "새 일반 정기 결제 등록"}
         </summary>
 
         <form
@@ -832,6 +845,7 @@ function CreateRuleForm({
         >
           <FormFields
             key={resetVersion}
+            mode={mode}
             accounts={accounts}
             cards={cards}
             categories={categories}
@@ -846,7 +860,9 @@ function CreateRuleForm({
           >
             {isPending
               ? "등록 중..."
-              : "정기 항목 등록"}
+              : mode === "card"
+                ? "카드 정기 결제 등록"
+                : "일반 정기 결제 등록"}
           </button>
         </form>
       </details>
@@ -859,6 +875,7 @@ function CreateRuleForm({
 }
 
 function RuleRow({
+  mode,
   rule,
   accounts,
   cards,
@@ -866,6 +883,7 @@ function RuleRow({
   rateRules,
   currentMonth,
 }: {
+  mode: RecurringPageMode;
   rule: Rule;
   accounts: Account[];
   cards: Card[];
@@ -873,6 +891,7 @@ function RuleRow({
   rateRules: RateRule[];
   currentMonth: string;
 }) {
+  const router = useRouter();
   const editDetailsRef =
     useRef<HTMLDetailsElement>(null);
 
@@ -910,8 +929,18 @@ function RuleRow({
       editDetailsRef.current?.removeAttribute(
         "open",
       );
+      router.refresh();
     }
-  }, [updateState]);
+  }, [updateState, router]);
+
+  useEffect(() => {
+    if (
+      activeState.status === "success" ||
+      deleteState.status === "success"
+    ) {
+      router.refresh();
+    }
+  }, [activeState, deleteState, router]);
 
   const account = accounts.find(
     (item) =>
@@ -1122,7 +1151,9 @@ function RuleRow({
         className="mt-4"
       >
         <summary className="cursor-pointer text-sm font-semibold text-gray-600">
-          정기 항목 수정
+          {mode === "card"
+            ? "카드 정기 결제 수정"
+            : "일반 정기 결제 수정"}
         </summary>
 
         <form
@@ -1137,6 +1168,7 @@ function RuleRow({
 
           <FormFields
             key={rule.updated_at}
+            mode={mode}
             accounts={accounts}
             cards={cards}
             categories={categories}
@@ -1164,7 +1196,149 @@ function RuleRow({
   );
 }
 
+function CardRuleGroup({
+  card,
+  rules,
+  accounts,
+  cards,
+  categories,
+  rateRules,
+  currentMonth,
+}: {
+  card: Card;
+  rules: Rule[];
+  accounts: Account[];
+  cards: Card[];
+  categories: Category[];
+  rateRules: RateRule[];
+  currentMonth: string;
+}) {
+  const paymentAccount =
+    accounts.find(
+      (account) =>
+        account.id ===
+        card.payment_account_id,
+    );
+
+  const activeRules =
+    rules.filter(
+      (rule) => rule.is_active,
+    );
+
+  const activeMonthlyRules =
+    activeRules.filter(
+      (rule) =>
+        rule.recurrence_frequency ===
+        "monthly",
+    );
+
+  const activeYearlyRules =
+    activeRules.filter(
+      (rule) =>
+        rule.recurrence_frequency ===
+        "yearly",
+    );
+
+  const monthlyAmount =
+    activeMonthlyRules.reduce(
+      (sum, rule) =>
+        sum + rule.amount,
+      0,
+    );
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
+      <div className="border-b border-[var(--border)] bg-slate-50/80 px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-bold text-gray-900">
+                {card.name}
+              </h3>
+
+              {!card.is_active ? (
+                <Badge tone="warn">
+                  카드 비활성
+                </Badge>
+              ) : null}
+
+              <Badge>
+                결제일{" "}
+                {card.payment_day}일
+              </Badge>
+            </div>
+
+            <p className="mt-2 text-xs leading-5 text-gray-500">
+              출금계좌{" "}
+              {paymentAccount?.name ??
+                "확인 필요"}
+              {" · "}
+              등록 {rules.length}건
+              {" · "}
+              활성{" "}
+              {activeRules.length}건
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <div className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-right">
+              <p className="text-[11px] font-medium text-gray-500">
+                매월 반복
+              </p>
+              <p className="mt-0.5 text-sm font-bold text-gray-900">
+                {won(monthlyAmount)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-gray-400">
+                {
+                  activeMonthlyRules.length
+                }
+                건
+              </p>
+            </div>
+
+            {activeYearlyRules.length >
+            0 ? (
+              <div className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-right">
+                <p className="text-[11px] font-medium text-gray-500">
+                  연간 반복
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-gray-900">
+                  {
+                    activeYearlyRules.length
+                  }
+                  건
+                </p>
+                <p className="mt-0.5 text-[10px] text-gray-400">
+                  해당 월에만 반영
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="divide-y divide-[var(--border)] px-4 sm:px-5">
+        {rules.map((rule) => (
+          <RuleRow
+            key={rule.id}
+            mode="card"
+            rule={rule}
+            accounts={accounts}
+            cards={cards}
+            categories={categories}
+            rateRules={rateRules}
+            currentMonth={
+              currentMonth
+            }
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function RecurringManager({
+  mode,
   rules,
   accounts,
   cards,
@@ -1173,30 +1347,44 @@ export function RecurringManager({
   currentMonth,
 }: Props) {
   const hasRequiredSettings =
-    accounts.some(
-      (account) =>
-        account.is_active,
-    ) &&
-    categories.some(
-      (category) =>
-        category.is_active &&
-        (
-          category.transaction_type ===
-            "income" ||
-          category.transaction_type ===
-            "expense"
-        ),
-    );
+    mode === "card"
+      ? cards.some(
+          (card) =>
+            card.is_active,
+        ) &&
+        categories.some(
+          (category) =>
+            category.is_active &&
+            category.transaction_type ===
+              "expense",
+        )
+      : accounts.some(
+          (account) =>
+            account.is_active,
+        ) &&
+        categories.some(
+          (category) =>
+            category.is_active &&
+            (
+              category.transaction_type ===
+                "income" ||
+              category.transaction_type ===
+                "expense"
+            ),
+        );
 
   return (
     <>
       {!hasRequiredSettings ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          정기 항목을 등록하려면 먼저 설정에서 활성 계좌와 카테고리를 준비해주세요.
+          {mode === "card"
+            ? "카드 정기 결제를 등록하려면 먼저 설정에서 활성 카드와 지출 카테고리를 준비해주세요."
+            : "일반 정기 결제를 등록하려면 먼저 설정에서 활성 계좌와 카테고리를 준비해주세요."}
         </div>
       ) : null}
 
       <CreateRuleForm
+        mode={mode}
         accounts={accounts}
         cards={cards}
         categories={categories}
@@ -1204,20 +1392,116 @@ export function RecurringManager({
         currentMonth={currentMonth}
       />
 
-      <div className="mt-6 divide-y divide-[var(--border)]">
-        {rules.length === 0 ? (
-          <div className="py-10 text-center">
-            <p className="text-sm text-gray-500">
-              아직 등록된 정기 항목이 없습니다.
-            </p>
-            <p className="mt-1 text-xs text-gray-400">
-              정기 수입·정기 지출·할부를 매월 또는 매년 반복하도록 등록할 수 있습니다.
-            </p>
-          </div>
-        ) : (
-          rules.map((rule) => (
+      {rules.length === 0 ? (
+        <div className="mt-6 py-10 text-center">
+          <p className="text-sm text-gray-500">
+            {mode === "card"
+              ? "아직 등록된 카드 정기 결제가 없습니다."
+              : "아직 등록된 일반 정기 결제가 없습니다."}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            {mode === "card"
+              ? "구독료·보험료처럼 카드로 반복 결제되는 항목을 등록할 수 있습니다."
+              : "정기 수입과 계좌로 직접 입출금되는 정기 지출을 등록할 수 있습니다."}
+          </p>
+        </div>
+      ) : mode === "card" ? (
+        <div className="mt-6 space-y-4">
+          {cards
+            .filter((card) =>
+              rules.some(
+                (rule) =>
+                  rule.card_id ===
+                  card.id,
+              ),
+            )
+            .map((card) => (
+              <CardRuleGroup
+                key={card.id}
+                card={card}
+                rules={rules.filter(
+                  (rule) =>
+                    rule.card_id ===
+                    card.id,
+                )}
+                accounts={
+                  accounts
+                }
+                cards={cards}
+                categories={
+                  categories
+                }
+                rateRules={
+                  rateRules
+                }
+                currentMonth={
+                  currentMonth
+                }
+              />
+            ))}
+
+          {rules.some(
+            (rule) =>
+              !cards.some(
+                (card) =>
+                  card.id ===
+                  rule.card_id,
+              ),
+          ) ? (
+            <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+              <div className="border-b border-amber-200 bg-amber-50 px-4 py-4">
+                <p className="font-bold text-amber-900">
+                  카드 연결 확인 필요
+                </p>
+                <p className="mt-1 text-xs text-amber-700">
+                  현재 카드 목록에서 찾을 수 없는 정기 결제 항목입니다.
+                </p>
+              </div>
+
+              <div className="divide-y divide-[var(--border)] px-4">
+                {rules
+                  .filter(
+                    (rule) =>
+                      !cards.some(
+                        (card) =>
+                          card.id ===
+                          rule.card_id,
+                      ),
+                  )
+                  .map((rule) => (
+                    <RuleRow
+                      key={
+                        rule.id
+                      }
+                      mode="card"
+                      rule={rule}
+                      accounts={
+                        accounts
+                      }
+                      cards={
+                        cards
+                      }
+                      categories={
+                        categories
+                      }
+                      rateRules={
+                        rateRules
+                      }
+                      currentMonth={
+                        currentMonth
+                      }
+                    />
+                  ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-6 divide-y divide-[var(--border)]">
+          {rules.map((rule) => (
             <RuleRow
               key={rule.id}
+              mode={mode}
               rule={rule}
               accounts={accounts}
               cards={cards}
@@ -1225,9 +1509,9 @@ export function RecurringManager({
               rateRules={rateRules}
               currentMonth={currentMonth}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }
