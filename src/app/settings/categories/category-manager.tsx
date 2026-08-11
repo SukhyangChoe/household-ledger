@@ -42,11 +42,6 @@ const initialState: CategoryActionState = {
 const inputClassName =
   "mt-2 w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100";
 
-const fundPurposeLabels = {
-  living: "생활비",
-  investment: "투자",
-} as const;
-
 const expenseNatureLabels = {
   fixed: "고정",
   variable: "변동",
@@ -317,9 +312,9 @@ function CreateCategoryForm({
 
             </>
           ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium">
-                지출 집계 분류
+                월별 가계부 표시 분류
                 <select
                   name="expenseSummaryGroup"
                   defaultValue="monthly"
@@ -341,25 +336,7 @@ function CreateCategoryForm({
               </label>
 
               <label className="text-sm font-medium">
-                선택 시 자금 목적
-                <select
-                  name="fundPurpose"
-                  defaultValue="living"
-                  className={
-                    inputClassName
-                  }
-                >
-                  <option value="living">
-                    생활비
-                  </option>
-                  <option value="investment">
-                    투자
-                  </option>
-                </select>
-              </label>
-
-              <label className="text-sm font-medium">
-                선택 시 지출 성격
+                기본 지출 성격
                 <select
                   name="expenseNature"
                   defaultValue="variable"
@@ -380,13 +357,6 @@ function CreateCategoryForm({
               </label>
             </div>
           )}
-
-          <p className="mt-3 text-xs leading-5 text-gray-500">
-            집계 분류는 월별 가계부에서
-            수입·지출을 묶어 보여줄 때
-            사용합니다. 다른 기본값은
-            거래 입력 시 자동 선택됩니다.
-          </p>
 
           <button
             type="submit"
@@ -551,15 +521,6 @@ function CategoryRow({
                     분류 필요
                   </Badge>
                 )}
-
-                <Badge>
-                  {
-                    fundPurposeLabels[
-                      category.suggested_fund_purpose ??
-                        "living"
-                    ]
-                  }
-                </Badge>
 
                 <Badge>
                   {
@@ -821,9 +782,9 @@ function CategoryRow({
 
             </>
           ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium">
-                지출 집계 분류
+                월별 가계부 표시 분류
                 <select
                   name="expenseSummaryGroup"
                   defaultValue={
@@ -852,28 +813,7 @@ function CategoryRow({
               </label>
 
               <label className="text-sm font-medium">
-                선택 시 자금 목적
-                <select
-                  name="fundPurpose"
-                  defaultValue={
-                    category.suggested_fund_purpose ??
-                    "living"
-                  }
-                  className={
-                    inputClassName
-                  }
-                >
-                  <option value="living">
-                    생활비
-                  </option>
-                  <option value="investment">
-                    투자
-                  </option>
-                </select>
-              </label>
-
-              <label className="text-sm font-medium">
-                선택 시 지출 성격
+                기본 지출 성격
                 <select
                   name="expenseNature"
                   defaultValue={

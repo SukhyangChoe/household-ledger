@@ -184,9 +184,6 @@ export type Database = {
           suggested_expense_nature:
             | Database["public"]["Enums"]["expense_nature"]
             | null
-          suggested_fund_purpose:
-            | Database["public"]["Enums"]["fund_purpose"]
-            | null
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string
         }
@@ -210,9 +207,6 @@ export type Database = {
           suggested_expense_nature?:
             | Database["public"]["Enums"]["expense_nature"]
             | null
-          suggested_fund_purpose?:
-            | Database["public"]["Enums"]["fund_purpose"]
-            | null
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
         }
@@ -235,9 +229,6 @@ export type Database = {
           sort_order?: number
           suggested_expense_nature?:
             | Database["public"]["Enums"]["expense_nature"]
-            | null
-          suggested_fund_purpose?:
-            | Database["public"]["Enums"]["fund_purpose"]
             | null
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string

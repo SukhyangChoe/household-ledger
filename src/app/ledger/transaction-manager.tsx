@@ -140,7 +140,7 @@ function TransactionFields({
   const [effectiveDate, setEffectiveDate] =
     useState(defaultEffectiveDate);
   const [fundPurpose, setFundPurpose] =
-    useState("living");
+    useState("");
   const [expenseNature, setExpenseNature] =
     useState("variable");
   const [ownerType, setOwnerType] = useState("wife");
@@ -216,9 +216,6 @@ function TransactionFields({
         setOwnerType(defaultAccount.owner_type);
       }
     } else {
-      setFundPurpose(
-        category.suggested_fund_purpose ?? "living",
-      );
       setExpenseNature(
         category.suggested_expense_nature ?? "variable",
       );
@@ -235,7 +232,7 @@ function TransactionFields({
     setEffectiveDate(
       defaultEffectiveDate,
     );
-    setFundPurpose("living");
+    setFundPurpose("");
     setExpenseNature("variable");
     setOwnerType("wife");
   }
@@ -517,8 +514,12 @@ function TransactionFields({
                 onChange={(event) => {
                   setFundPurpose(event.target.value);
                 }}
+                required
                 className={inputClassName}
               >
+                <option value="">
+                  선택해주세요
+                </option>
                 <option value="living">생활비</option>
                 <option value="investment">투자</option>
               </select>
@@ -702,7 +703,7 @@ function TransactionEditForm({
       transaction.card_id ? "card" : "account",
     );
   const [fundPurpose, setFundPurpose] = useState(
-    transaction.fund_purpose ?? "living",
+    transaction.fund_purpose ?? "",
   );
   const [expenseNature, setExpenseNature] = useState(
     transaction.expense_nature ?? "variable",
@@ -772,9 +773,6 @@ function TransactionEditForm({
         setOwnerType(defaultAccount.owner_type);
       }
     } else {
-      setFundPurpose(
-        category.suggested_fund_purpose ?? "living",
-      );
       setExpenseNature(
         category.suggested_expense_nature ?? "variable",
       );
@@ -985,15 +983,21 @@ function TransactionEditForm({
                 value={fundPurpose}
                 onChange={(event) => {
                   const value = event.currentTarget.value;
+
                   if (
+                    value === "" ||
                     value === "living" ||
                     value === "investment"
                   ) {
                     setFundPurpose(value);
                   }
                 }}
+                required
                 className={inputClassName}
               >
+                <option value="">
+                  선택해주세요
+                </option>
                 <option value="living">생활비</option>
                 <option value="investment">투자</option>
               </select>
