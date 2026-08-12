@@ -861,7 +861,7 @@ function TransactionEditForm({
 
           {transaction.transaction_type === "expense" ? (
             <label className="text-sm font-medium">
-              가계부 표시 분류
+              월별 가계부 표시 분류
               <select
                 name="expenseSummaryGroup"
                 value={expenseSummaryGroup}
@@ -1196,6 +1196,18 @@ function TransactionItem({
       deletePlannedTransaction,
       initialState,
     );
+
+  useEffect(() => {
+    if (
+      statusState.status === "success" ||
+      deleteState.status === "success"
+    ) {
+      detailsRef.current?.removeAttribute("open");
+    }
+  }, [
+    deleteState.status,
+    statusState.status,
+  ]);
 
   const category = categories.find(
     (item) => item.id === transaction.category_id,
