@@ -8,13 +8,16 @@ import {
   type RefObject,
 } from "react";
 
+
 import {
   changeTransactionStatus,
   createTransaction,
   deletePlannedTransaction,
-  updateTransaction,
   type TransactionActionState,
 } from "@/app/ledger/actions";
+import {
+  updateTransactionWithSummaryGroup,
+} from "@/app/ledger/summary-group-actions";
 import { groupCardTransactions } from "@/domain/ledger-card-grouping";
 import type { Database } from "@/types/database.types";
 
@@ -30,6 +33,8 @@ type Transaction =
   Database["public"]["Tables"]["transactions"]["Row"];
 type TransactionType = "income" | "expense";
 type PaymentMethod = "account" | "card";
+type ExpenseSummaryGroup =
+  Database["public"]["Enums"]["expense_summary_group"];
 
 type Props = {
   accounts: Account[];
@@ -679,6 +684,7 @@ function CreateTransactionDialog({
   );
 }
 
+
 function TransactionEditForm({
   transaction,
   accounts,
@@ -691,7 +697,7 @@ function TransactionEditForm({
   detailsRef: RefObject<HTMLDetailsElement | null>;
 } & TransactionLookupProps) {
   const [state, formAction, pending] = useActionState(
-    updateTransaction,
+    updateTransactionWithSummaryGroup,
     initialState,
   );
 
@@ -708,6 +714,15 @@ function TransactionEditForm({
   const [expenseNature, setExpenseNature] = useState(
     transaction.expense_nature ?? "variable",
   );
+  const initialCategory = categories.find(
+    (item) => item.id === transaction.category_id,
+  );
+  const [expenseSummaryGroup, setExpenseSummaryGroup] =
+    useState<ExpenseSummaryGroup | "">(
+      transaction.expense_summary_group_snapshot ??
+        initialCategory?.expense_summary_group ??
+        "",
+    );
   const [accountId, setAccountId] = useState(
     transaction.account_id ?? "",
   );
@@ -776,6 +791,9 @@ function TransactionEditForm({
       setExpenseNature(
         category.suggested_expense_nature ?? "variable",
       );
+      setExpenseSummaryGroup(
+        category.expense_summary_group ?? "",
+      );
     }
   }
 
@@ -791,7 +809,13 @@ function TransactionEditForm({
           value={transaction.id}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div
+          className={
+            transaction.transaction_type === "expense"
+              ? "grid gap-3 md:grid-cols-2 lg:grid-cols-4"
+              : "grid gap-3 md:grid-cols-3"
+          }
+        >
           <label className="text-sm font-medium">
             반영일
             <input
@@ -834,9 +858,41 @@ function TransactionEditForm({
               className={inputClassName}
             />
           </label>
+
+          {transaction.transaction_type === "expense" ? (
+            <label className="text-sm font-medium">
+              가계부 표시 분류
+              <select
+                name="expenseSummaryGroup"
+                value={expenseSummaryGroup}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+
+                  if (
+                    value === "monthly" ||
+                    value === "annual" ||
+                    value === "variable" ||
+                    value === "repayment_saving"
+                  ) {
+                    setExpenseSummaryGroup(value);
+                  }
+                }}
+                required
+                className={inputClassName}
+              >
+                <option value="">선택해주세요</option>
+                <option value="monthly">월간지출</option>
+                <option value="annual">연간지출</option>
+                <option value="variable">변동지출</option>
+                <option value="repayment_saving">
+                  상환·적립
+                </option>
+              </select>
+            </label>
+          ) : null}
         </div>
 
-        <label className="mt-4 block text-sm font-medium">
+        <label className="mt-3 block text-sm font-medium">
           거래명
           <input
             name="name"
@@ -849,7 +905,7 @@ function TransactionEditForm({
         </label>
 
         {transaction.transaction_type === "income" ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
             <label className="text-sm font-medium">
               수입 소유자
               <select
@@ -920,7 +976,7 @@ function TransactionEditForm({
             </label>
           </div>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             <label className="text-sm font-medium">
               결제 수단
               <select
@@ -1028,7 +1084,7 @@ function TransactionEditForm({
           </div>
         )}
 
-        <label className="mt-4 block text-sm font-medium">
+        <label className="mt-3 block text-sm font-medium">
           메모
           <input
             name="memo"
@@ -1041,7 +1097,7 @@ function TransactionEditForm({
         <button
           type="submit"
           disabled={pending}
-          className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
         >
           {pending ? "저장 중..." : "수정 저장"}
         </button>
@@ -1053,8 +1109,6 @@ function TransactionEditForm({
 }
 
 
-type ExpenseSummaryGroup =
-  Database["public"]["Enums"]["expense_summary_group"];
 type IncomeSummaryGroup =
   Database["public"]["Enums"]["income_summary_group"];
 
@@ -1377,31 +1431,19 @@ function TransactionItem({
       </summary>
 
       <div className="border-t border-black/5 bg-white/80 p-3">
-        {editable ? (
-          <TransactionEditForm
-            key={transaction.updated_at}
-            transaction={transaction}
-            accounts={accounts}
-            cards={cards}
-            categories={categories}
-            rateRules={rateRules}
-            detailsRef={detailsRef}
-          />
-        ) : null}
-
         {canChangeStatus || canDelete ? (
           <div
             className={
               editable
-                ? "mt-3 border-t border-[var(--border)] pt-3"
+                ? "mb-3 border-b border-[var(--border)] pb-3"
                 : ""
             }
           >
-            <p className="mb-2 text-xs font-semibold text-gray-500">
+            <p className="mb-1.5 text-[11px] font-semibold text-gray-500">
               거래 처리
             </p>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {transaction.status === "planned" ? (
                 <form action={statusAction}>
                   <input
@@ -1418,7 +1460,7 @@ function TransactionItem({
                   <button
                     type="submit"
                     disabled={statusPending}
-                    className="rounded-lg border border-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 disabled:opacity-60"
+                    className="rounded-md border border-emerald-700 px-2 py-1 text-[11px] font-semibold leading-none text-emerald-800 disabled:opacity-60"
                   >
                     확정
                   </button>
@@ -1452,7 +1494,7 @@ function TransactionItem({
                   <button
                     type="submit"
                     disabled={statusPending}
-                    className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold disabled:opacity-60"
+                    className="rounded-md border border-[var(--border)] px-2 py-1 text-[11px] font-semibold leading-none disabled:opacity-60"
                   >
                     취소 처리
                   </button>
@@ -1481,7 +1523,7 @@ function TransactionItem({
                   <button
                     type="submit"
                     disabled={deletePending}
-                    className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 disabled:opacity-60"
+                    className="rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold leading-none text-red-600 disabled:opacity-60"
                   >
                     삭제
                   </button>
@@ -1492,6 +1534,18 @@ function TransactionItem({
             <ActionMessage state={statusState} />
             <ActionMessage state={deleteState} />
           </div>
+        ) : null}
+
+        {editable ? (
+          <TransactionEditForm
+            key={transaction.updated_at}
+            transaction={transaction}
+            accounts={accounts}
+            cards={cards}
+            categories={categories}
+            rateRules={rateRules}
+            detailsRef={detailsRef}
+          />
         ) : null}
       </div>
     </details>
@@ -1558,7 +1612,7 @@ function CardTransactionGroup({
           className={`hidden md:grid ${desktopGridClass}`}
         >
           <div className="flex min-w-0 items-center gap-2 px-2 py-2">
-            <span className="min-w-0 flex-1 break-words text-xs font-semibold leading-5 text-gray-800 sm:text-sm">
+            <span className="min-w-0 flex-1 break-words text-xs font-medium text-gray-800 sm:text-sm">
               {name}
             </span>
 
@@ -1608,7 +1662,7 @@ function CardTransactionGroup({
 
         <div className="flex min-w-0 items-center gap-2 px-2 py-2 md:hidden">
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
-            <span className="whitespace-normal break-words text-xs font-semibold leading-5 text-gray-800 sm:text-sm">
+            <span className="whitespace-normal break-words text-xs font-medium text-gray-800 sm:text-sm">
               {name}
             </span>
           </div>

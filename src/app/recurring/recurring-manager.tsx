@@ -42,6 +42,11 @@ type RecurrenceFrequency =
 type RecurringPageMode =
   | "general"
   | "card";
+type RecurringGroupBy =
+  | "default"
+  | "card"
+  | "category"
+  | "expenseNature";
 
 type Props = {
   mode: RecurringPageMode;
@@ -1196,6 +1201,177 @@ function RuleRow({
   );
 }
 
+const expenseNatureGroupLabels = {
+  fixed: "고정",
+  variable: "변동",
+  irregular: "비정기",
+  income: "수입",
+  unknown: "지출 성격 확인 필요",
+} as const;
+
+type RuleGroup = {
+  key: string;
+  title: string;
+  rules: Rule[];
+};
+
+function groupRulesByCategory(
+  rules: Rule[],
+  categories: Category[],
+): RuleGroup[] {
+  const grouped = new Map<string, RuleGroup>();
+
+  for (const rule of rules) {
+    const category = categories.find(
+      (item) => item.id === rule.category_id,
+    );
+    const key = category?.id ?? "missing-category";
+    const title =
+      category?.name ?? "카테고리 확인 필요";
+    const existing = grouped.get(key);
+
+    if (existing) {
+      existing.rules.push(rule);
+    } else {
+      grouped.set(key, {
+        key,
+        title,
+        rules: [rule],
+      });
+    }
+  }
+
+  return Array.from(grouped.values());
+}
+
+function groupRulesByExpenseNature(
+  rules: Rule[],
+): RuleGroup[] {
+  const order = [
+    "income",
+    "fixed",
+    "variable",
+    "irregular",
+    "unknown",
+  ] as const;
+
+  const grouped = new Map<
+    (typeof order)[number],
+    Rule[]
+  >();
+
+  for (const rule of rules) {
+    const key =
+      rule.transaction_type === "income"
+        ? "income"
+        : rule.expense_nature === "fixed" ||
+            rule.expense_nature === "variable" ||
+            rule.expense_nature === "irregular"
+          ? rule.expense_nature
+          : "unknown";
+
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.push(rule);
+    } else {
+      grouped.set(key, [rule]);
+    }
+  }
+
+  return order
+    .filter((key) => grouped.has(key))
+    .map((key) => ({
+      key,
+      title: expenseNatureGroupLabels[key],
+      rules: grouped.get(key) ?? [],
+    }));
+}
+
+function RuleGroupSection({
+  title,
+  rules,
+  mode,
+  accounts,
+  cards,
+  categories,
+  rateRules,
+  currentMonth,
+}: {
+  title: string;
+  rules: Rule[];
+  mode: RecurringPageMode;
+  accounts: Account[];
+  cards: Card[];
+  categories: Category[];
+  rateRules: RateRule[];
+  currentMonth: string;
+}) {
+  const activeRules = rules.filter(
+    (rule) => rule.is_active,
+  );
+  const activeMonthlyAmount = activeRules
+    .filter(
+      (rule) =>
+        rule.recurrence_frequency === "monthly",
+    )
+    .reduce(
+      (sum, rule) => sum + rule.amount,
+      0,
+    );
+  const activeYearlyCount = activeRules.filter(
+    (rule) =>
+      rule.recurrence_frequency === "yearly",
+  ).length;
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
+      <div className="border-b border-[var(--border)] bg-slate-50/80 px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-bold text-gray-900">
+                {title}
+              </h3>
+              <Badge>
+                등록 {rules.length}건
+              </Badge>
+              <Badge>
+                활성 {activeRules.length}건
+              </Badge>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 sm:justify-end">
+            <span>
+              매월 반복 {won(activeMonthlyAmount)}
+            </span>
+            {activeYearlyCount > 0 ? (
+              <span>
+                연간 반복 {activeYearlyCount}건
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="divide-y divide-[var(--border)] px-4 sm:px-5">
+        {rules.map((rule) => (
+          <RuleRow
+            key={rule.id}
+            mode={mode}
+            rule={rule}
+            accounts={accounts}
+            cards={cards}
+            categories={categories}
+            rateRules={rateRules}
+            currentMonth={currentMonth}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function CardRuleGroup({
   card,
   rules,
@@ -1346,6 +1522,11 @@ export function RecurringManager({
   rateRules,
   currentMonth,
 }: Props) {
+  const [groupBy, setGroupBy] =
+    useState<RecurringGroupBy>(
+      mode === "card" ? "card" : "default",
+    );
+
   const hasRequiredSettings =
     mode === "card"
       ? cards.some(
@@ -1372,6 +1553,23 @@ export function RecurringManager({
                 "expense"
             ),
         );
+
+  const categoryGroups =
+    groupRulesByCategory(
+      rules,
+      categories,
+    );
+  const expenseNatureGroups =
+    groupRulesByExpenseNature(rules);
+
+  const cardRulesWithMissingConnection =
+    rules.filter(
+      (rule) =>
+        !cards.some(
+          (card) =>
+            card.id === rule.card_id,
+        ),
+    );
 
   return (
     <>
@@ -1405,112 +1603,148 @@ export function RecurringManager({
               : "정기 수입과 계좌로 직접 입출금되는 정기 지출을 등록할 수 있습니다."}
           </p>
         </div>
-      ) : mode === "card" ? (
-        <div className="mt-6 space-y-4">
-          {cards
-            .filter((card) =>
-              rules.some(
-                (rule) =>
-                  rule.card_id ===
-                  card.id,
-              ),
-            )
-            .map((card) => (
-              <CardRuleGroup
-                key={card.id}
-                card={card}
-                rules={rules.filter(
-                  (rule) =>
-                    rule.card_id ===
-                    card.id,
-                )}
-                accounts={
-                  accounts
-                }
-                cards={cards}
-                categories={
-                  categories
-                }
-                rateRules={
-                  rateRules
-                }
-                currentMonth={
-                  currentMonth
-                }
-              />
-            ))}
-
-          {rules.some(
-            (rule) =>
-              !cards.some(
-                (card) =>
-                  card.id ===
-                  rule.card_id,
-              ),
-          ) ? (
-            <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
-              <div className="border-b border-amber-200 bg-amber-50 px-4 py-4">
-                <p className="font-bold text-amber-900">
-                  카드 연결 확인 필요
-                </p>
-                <p className="mt-1 text-xs text-amber-700">
-                  현재 카드 목록에서 찾을 수 없는 정기 결제 항목입니다.
-                </p>
-              </div>
-
-              <div className="divide-y divide-[var(--border)] px-4">
-                {rules
-                  .filter(
-                    (rule) =>
-                      !cards.some(
-                        (card) =>
-                          card.id ===
-                          rule.card_id,
-                      ),
-                  )
-                  .map((rule) => (
-                    <RuleRow
-                      key={
-                        rule.id
-                      }
-                      mode="card"
-                      rule={rule}
-                      accounts={
-                        accounts
-                      }
-                      cards={
-                        cards
-                      }
-                      categories={
-                        categories
-                      }
-                      rateRules={
-                        rateRules
-                      }
-                      currentMonth={
-                        currentMonth
-                      }
-                    />
-                  ))}
-              </div>
-            </section>
-          ) : null}
-        </div>
       ) : (
-        <div className="mt-6 divide-y divide-[var(--border)]">
-          {rules.map((rule) => (
-            <RuleRow
-              key={rule.id}
-              mode={mode}
-              rule={rule}
-              accounts={accounts}
-              cards={cards}
-              categories={categories}
-              rateRules={rateRules}
-              currentMonth={currentMonth}
-            />
-          ))}
-        </div>
+        <>
+          <div className="mt-6 flex justify-end">
+            <label className="flex w-full items-center justify-end gap-3 text-sm font-medium sm:w-auto">
+              <span className="shrink-0">
+                그룹 기준
+              </span>
+              <select
+                value={groupBy}
+                onChange={(event) => {
+                  const value =
+                    event.currentTarget.value as RecurringGroupBy;
+                  setGroupBy(value);
+                }}
+                className="w-44 rounded-xl border border-[var(--border)] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+              >
+                {mode === "general" ? (
+                  <option value="default">
+                    기본 보기
+                  </option>
+                ) : (
+                  <option value="card">
+                    카드별
+                  </option>
+                )}
+                <option value="category">
+                  카테고리별
+                </option>
+                <option value="expenseNature">
+                  지출 성격별
+                </option>
+              </select>
+            </label>
+          </div>
+
+          {groupBy === "card" &&
+          mode === "card" ? (
+            <div className="mt-4 space-y-4">
+              {cards
+                .filter((card) =>
+                  rules.some(
+                    (rule) =>
+                      rule.card_id ===
+                      card.id,
+                  ),
+                )
+                .map((card) => (
+                  <CardRuleGroup
+                    key={card.id}
+                    card={card}
+                    rules={rules.filter(
+                      (rule) =>
+                        rule.card_id ===
+                        card.id,
+                    )}
+                    accounts={accounts}
+                    cards={cards}
+                    categories={categories}
+                    rateRules={rateRules}
+                    currentMonth={currentMonth}
+                  />
+                ))}
+
+              {cardRulesWithMissingConnection.length > 0 ? (
+                <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+                  <div className="border-b border-amber-200 bg-amber-50 px-4 py-4">
+                    <p className="font-bold text-amber-900">
+                      카드 연결 확인 필요
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      현재 카드 목록에서 찾을 수 없는 정기 결제 항목입니다.
+                    </p>
+                  </div>
+
+                  <div className="divide-y divide-[var(--border)] px-4">
+                    {cardRulesWithMissingConnection.map(
+                      (rule) => (
+                        <RuleRow
+                          key={rule.id}
+                          mode="card"
+                          rule={rule}
+                          accounts={accounts}
+                          cards={cards}
+                          categories={categories}
+                          rateRules={rateRules}
+                          currentMonth={currentMonth}
+                        />
+                      ),
+                    )}
+                  </div>
+                </section>
+              ) : null}
+            </div>
+          ) : groupBy === "category" ? (
+            <div className="mt-4 space-y-4">
+              {categoryGroups.map((group) => (
+                <RuleGroupSection
+                  key={group.key}
+                  title={group.title}
+                  rules={group.rules}
+                  mode={mode}
+                  accounts={accounts}
+                  cards={cards}
+                  categories={categories}
+                  rateRules={rateRules}
+                  currentMonth={currentMonth}
+                />
+              ))}
+            </div>
+          ) : groupBy === "expenseNature" ? (
+            <div className="mt-4 space-y-4">
+              {expenseNatureGroups.map((group) => (
+                <RuleGroupSection
+                  key={group.key}
+                  title={group.title}
+                  rules={group.rules}
+                  mode={mode}
+                  accounts={accounts}
+                  cards={cards}
+                  categories={categories}
+                  rateRules={rateRules}
+                  currentMonth={currentMonth}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 divide-y divide-[var(--border)]">
+              {rules.map((rule) => (
+                <RuleRow
+                  key={rule.id}
+                  mode={mode}
+                  rule={rule}
+                  accounts={accounts}
+                  cards={cards}
+                  categories={categories}
+                  rateRules={rateRules}
+                  currentMonth={currentMonth}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </>
   );
